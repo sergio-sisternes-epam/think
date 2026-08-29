@@ -1,0 +1,54 @@
+name: PR Validate
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-packages:
+    name: Compile all packages (dry-run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/apm-action@v1
+        with:
+          setup-only: 'true'
+          apm-version: '0.28.0'
+
+      - name: Compile all packages
+        run: |
+          find . -mindepth 2 -name "apm.yml" ! -path "*/.apm/*" -exec dirname {} \; \
+            | sort -u \
+            | while read pkg_dir; do
+                echo "::group::apm compile $pkg_dir"
+                (cd "$pkg_dir" && apm compile --dry-run --verbose) || exit 1
+                echo "::endgroup::"
+              done
+
+  validate-marketplace:
+    name: Validate marketplace
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/apm-action@v1
+        with:
+          setup-only: 'true'
+          apm-version: '0.28.0'
+
+      - name: Marketplace check
+        run: apm marketplace check
+
+      - name: Pack and check for drift
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          apm pack
+          if [ -n "$(git status --porcelain .claude-plugin/marketplace.json)" ]; then
+            echo "::error::marketplace.json is out of date — run 'apm pack' and commit the result."
+            exit 1
+          fi

@@ -1,0 +1,30 @@
+{
+  "name": "think",
+  "owner": {
+    "name": "sergio-sisternes-epam",
+    "url": "https://github.com/sergio-sisternes-epam"
+  },
+  "plugins": [
+    {
+      "name": "think-challenge",
+      "description": "Challenge ideas with search-grounded counter-arguments and critic perspectives.",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "source": "./packages/think-challenge"
+    },
+    {
+      "name": "think-grill",
+      "description": "Socratic questioning to refine ideas, clarify assumptions, and strengthen content.",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "source": "./packages/think-grill"
+    },
+    {
+      "name": "think-ramble",
+      "description": "Capture free-form thoughts and half-formed ideas; persist when a store is available.",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "source": "./packages/think-ramble"
+    }
+  ]
+}
