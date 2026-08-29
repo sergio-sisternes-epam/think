@@ -1,0 +1,6 @@
+name: think-ramble
+version: 1.0.0
+description: Grok-native think primitive (think-ramble).
+author: Sergio Sisternes
+license: Apache-2.0
+type: skill

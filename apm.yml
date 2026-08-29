@@ -1,0 +1,22 @@
+name: think
+version: 1.0.0
+description: APM marketplace for think-* packages (challenge, grill, ramble).
+author: Sergio Sisternes
+license: Apache-2.0
+type: marketplace
+marketplace:
+  owner:
+    name: sergio-sisternes-epam
+    url: https://github.com/sergio-sisternes-epam
+  build:
+    tagPattern: '{name}/v{version}'
+  packages:
+    - name: think-challenge
+      path: packages/think-challenge
+      version: 1.0.0
+    - name: think-grill
+      path: packages/think-grill
+      version: 1.0.0
+    - name: think-ramble
+      path: packages/think-ramble
+      version: 1.0.0
