@@ -1,6 +1,6 @@
 # think
 
-> Grok-native thinking primitives as one APM package: ramble, grill, and challenge.
+> Harness-agnostic thinking primitives as one APM package: ramble, grill, and challenge.
 
 [![CI](https://github.com/sergio-sisternes-epam/think/actions/workflows/ci.yml/badge.svg)](https://github.com/sergio-sisternes-epam/think/actions/workflows/ci.yml)
 [![PR Validate](https://github.com/sergio-sisternes-epam/think/actions/workflows/pr-validate.yml/badge.svg)](https://github.com/sergio-sisternes-epam/think/actions/workflows/pr-validate.yml)

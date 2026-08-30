@@ -1,7 +1,7 @@
 name: think
 version: 1.0.0
 description: >
-  Grok-native thinking primitives — ramble (capture), grill (Socratic
+  Harness-agnostic thinking primitives — ramble (capture), grill (Socratic)
   questioning), and challenge (search-grounded counters). Conversation-only
   when no durable store is present.
 author: Sergio Sisternes
