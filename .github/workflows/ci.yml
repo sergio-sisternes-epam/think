@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    name: Compile package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/apm-action@v1
+        with:
+          setup-only: 'true'
+          apm-version: '0.28.0'
+
+      - name: Compile
+        run: apm compile --dry-run --verbose

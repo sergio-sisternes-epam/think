@@ -4,3 +4,4 @@ __pycache__/
 .last-view-root
 .atlas/
 apm_modules/
+build/
