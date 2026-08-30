@@ -1,6 +1,0 @@
-name: think-ramble
-version: 1.0.0
-description: Capture free-form thoughts and half-formed ideas; persist when a store is available.
-author: Sergio Sisternes
-license: Apache-2.0
-type: skill

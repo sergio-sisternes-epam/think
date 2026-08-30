@@ -1,29 +1,12 @@
 name: think
 version: 1.0.0
-description: APM marketplace for think-* packages (challenge, grill, ramble).
+description: >
+  Grok-native thinking primitives — ramble (capture), grill (Socratic
+  questioning), and challenge (search-grounded counters). Conversation-only
+  when no durable store is present.
 author: Sergio Sisternes
 license: Apache-2.0
-marketplace:
-  owner:
-    name: sergio-sisternes-epam
-    url: https://github.com/sergio-sisternes-epam
-  build:
-    tagPattern: "{name}/v{version}"
-  outputs:
-    claude: {}
-  packages:
-    - name: think-challenge
-      source: ./packages/think-challenge
-      description: Challenge ideas with search-grounded counter-arguments and critic perspectives.
-      version: 1.0.0
-      license: Apache-2.0
-    - name: think-grill
-      source: ./packages/think-grill
-      description: Socratic questioning to refine ideas, clarify assumptions, and strengthen content.
-      version: 1.0.0
-      license: Apache-2.0
-    - name: think-ramble
-      source: ./packages/think-ramble
-      description: Capture free-form thoughts and half-formed ideas; persist when a store is available.
-      version: 1.0.0
-      license: Apache-2.0
+dependencies:
+  apm: []
+  mcp: []
+includes: auto

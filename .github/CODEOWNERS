@@ -1,13 +1,6 @@
-# Marketplace infrastructure — requires maintainer review
 /apm.yml                           @sergio-sisternes-epam
-/.claude-plugin/marketplace.json   @sergio-sisternes-epam
-/.github/workflows/marketplace.yml @sergio-sisternes-epam
-/.github/workflows/pr-validate.yml @sergio-sisternes-epam
-
-# Package directory — layer-level ownership
-/packages/                         @sergio-sisternes-epam
-
-# Community health and governance files
+/.apm/                             @sergio-sisternes-epam
+/.github/workflows/                @sergio-sisternes-epam
 /README.md                         @sergio-sisternes-epam
 /CONTRIBUTING.md                   @sergio-sisternes-epam
 /SECURITY.md                       @sergio-sisternes-epam
