@@ -20,7 +20,7 @@ Conversation-only use works when no durable store is present. If Atlas (or anoth
 ## Install
 
 ```bash
-apm install sergio-sisternes-epam/think#v1.0.0
+apm install sergio-sisternes-epam/think#v0.1.0
 ```
 
 Or from a local clone:
