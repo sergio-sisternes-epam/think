@@ -19,17 +19,26 @@ def run(*args: str, cwd: Path) -> None:
 
 
 def digest(path: Path) -> str:
+    if not path.is_file():
+        raise RuntimeError(f"{path}: expected generated consumer lock is missing")
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def validate_deployment(consumer: Path) -> None:
     skills_root = consumer / ".agents" / "skills"
+    if not skills_root.is_dir():
+        raise RuntimeError(
+            f"{skills_root}: expected deployed skills directory is missing"
+        )
+
     installed = {
         path.parent.name for path in skills_root.glob("*/SKILL.md")
     }
-    if installed != set(EXPECTED_SKILLS):
+    expected = set(EXPECTED_SKILLS)
+    if installed != expected:
         raise RuntimeError(
-            f"installed skills {sorted(installed)} != {list(EXPECTED_SKILLS)}"
+            f"installed skills mismatch: expected {sorted(expected)}, "
+            f"actual {sorted(installed)}"
         )
 
     for skill in EXPECTED_SKILLS:
