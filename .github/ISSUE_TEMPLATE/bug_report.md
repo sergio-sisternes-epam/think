@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem with a package or the marketplace
+about: Report a problem with the Think package
 title: ''
 labels: bug
 assignees: ''

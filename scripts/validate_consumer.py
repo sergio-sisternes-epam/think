@@ -8,17 +8,16 @@ import hashlib
 import re
 import tempfile
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from ci_output import emit_error, print_summary, write_github_outputs
 from command_runner import CommandError, run_command
+from release_readiness import manifest_version
 
 
 ROOT = Path(__file__).resolve().parents[1]
 COMMAND_TIMEOUT_SECONDS = 300
-EXPECTED_SKILLS = ("think-challenge", "think-grill", "think-ramble")
-EXPECTED_PACKAGE = "think"
-EXPECTED_VERSION = "0.1.0"
 SHARED_TARGETS = {
     "agent-skills",
     "codex",
@@ -30,6 +29,36 @@ SHARED_TARGETS = {
 }
 NATIVE_TARGETS = {"claude", "grok-build", "kiro"}
 SUPPORTED_TARGETS = SHARED_TARGETS | NATIVE_TARGETS
+
+
+@dataclass(frozen=True)
+class PackageContract:
+    name: str
+    version: str
+    skills: tuple[str, ...]
+
+
+def package_contract(root: Path = ROOT) -> PackageContract:
+    manifest = (root / "apm.yml").read_text(encoding="utf-8")
+    name_match = re.search(r"(?m)^name:\s*(\S+)\s*$", manifest)
+    if not name_match:
+        raise RuntimeError(f"{root / 'apm.yml'}: package name is missing")
+
+    skills = []
+    for skill_file in sorted((root / ".apm" / "skills").glob("*/SKILL.md")):
+        content = skill_file.read_text(encoding="utf-8")
+        skill_match = re.search(r"(?m)^name:\s*(\S+)\s*$", content)
+        if not skill_match:
+            raise RuntimeError(f"{skill_file}: skill name is missing")
+        skills.append(skill_match.group(1))
+    if not skills:
+        raise RuntimeError(f"{root / '.apm/skills'}: no skills found")
+
+    return PackageContract(
+        name=name_match.group(1),
+        version=manifest_version(root),
+        skills=tuple(skills),
+    )
 
 
 def run(
@@ -57,20 +86,47 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def validate_lock(lock: Path, consumer: Path, target: str) -> None:
+def validate_lock(
+    lock: Path,
+    consumer: Path,
+    target: str,
+    source: str,
+    package_root: Path = ROOT,
+) -> None:
     if not lock.is_file():
         raise RuntimeError(f"{lock}: expected generated consumer lock is missing")
     content = lock.read_text(encoding="utf-8")
+    contract = package_contract(package_root)
     for expected in (
-        f"name: {EXPECTED_PACKAGE}",
-        f"version: {EXPECTED_VERSION}",
+        f"name: {contract.name}",
+        f"version: {contract.version}",
         "deployed_file_hashes:",
     ):
         if expected not in content:
             raise RuntimeError(f"{lock}: missing expected lock metadata '{expected}'")
 
+    source_path = Path(source)
+    if source_path.exists():
+        provenance = (
+            "source: local",
+            f"local_path: {source_path.resolve()}",
+        )
+    else:
+        repo, separator, reference = source.rpartition("#")
+        if not separator or not repo or not reference:
+            raise RuntimeError(f"remote source must use owner/repo#ref: {source}")
+        provenance = (
+            f"repo_url: {repo}",
+            f"resolved_ref: {reference}",
+        )
+        if not re.search(r"(?m)^\s+resolved_commit:\s+[0-9a-f]{40}\s*$", content):
+            raise RuntimeError(f"{lock}: missing resolved commit for {source}")
+    for expected in provenance:
+        if expected not in content:
+            raise RuntimeError(f"{lock}: missing source provenance '{expected}'")
+
     for root in expected_skill_roots(consumer, target):
-        for skill in EXPECTED_SKILLS:
+        for skill in contract.skills:
             skill_file = root / skill / "SKILL.md"
             relative = skill_file.relative_to(consumer).as_posix()
             match = re.search(
@@ -113,7 +169,10 @@ def expected_skill_roots(consumer: Path, target: str) -> tuple[Path, ...]:
     return tuple(sorted(roots))
 
 
-def validate_skill_root(skills_root: Path) -> None:
+def validate_skill_root(
+    skills_root: Path,
+    contract: PackageContract,
+) -> None:
     if not skills_root.is_dir():
         raise RuntimeError(
             f"{skills_root}: expected deployed skills directory is missing"
@@ -122,26 +181,31 @@ def validate_skill_root(skills_root: Path) -> None:
     installed = {
         path.parent.name for path in skills_root.glob("*/SKILL.md")
     }
-    expected = set(EXPECTED_SKILLS)
+    expected = set(contract.skills)
     if installed != expected:
         raise RuntimeError(
             f"installed skills mismatch: expected {sorted(expected)}, "
             f"actual {sorted(installed)}"
         )
 
-    for skill in EXPECTED_SKILLS:
+    for skill in contract.skills:
         skill_file = skills_root / skill / "SKILL.md"
         expected_name = f"name: {skill}"
         if expected_name not in skill_file.read_text(encoding="utf-8").splitlines():
             raise RuntimeError(f"{skill_file}: missing exact '{expected_name}'")
 
 
-def validate_deployment(consumer: Path, target: str) -> None:
+def validate_deployment(
+    consumer: Path,
+    target: str,
+    package_root: Path = ROOT,
+) -> None:
     roots = expected_skill_roots(consumer, target)
     if not roots:
         raise RuntimeError(f"no supported skill deployment root for target: {target}")
+    contract = package_contract(package_root)
     for skills_root in roots:
-        validate_skill_root(skills_root)
+        validate_skill_root(skills_root, contract)
 
 
 def validate_consumer_in_directory(
@@ -149,6 +213,7 @@ def validate_consumer_in_directory(
     target: str,
     consumer: Path,
     runner: Callable[..., None] = run,
+    package_root: Path = ROOT,
 ) -> str:
     parse_targets(target)
     runner("git", "init", "--quiet", cwd=consumer, phase="git-init")
@@ -162,10 +227,10 @@ def validate_consumer_in_directory(
         cwd=consumer,
         phase="initial-install",
     )
-    validate_deployment(consumer, target)
+    validate_deployment(consumer, target, package_root)
 
     lock = consumer / "apm.lock.yaml"
-    validate_lock(lock, consumer, target)
+    validate_lock(lock, consumer, target, source, package_root)
     before = digest(lock)
     runner(
         "apm",
@@ -235,7 +300,7 @@ def main(argv: list[str] | None = None) -> int:
 
     fields = {
         "consumer_target": args.target,
-        "installed_skills": ",".join(EXPECTED_SKILLS),
+        "installed_skills": ",".join(package_contract().skills),
         "frozen_lock_sha256": lock_hash,
         "consumer_validation": "pass",
     }

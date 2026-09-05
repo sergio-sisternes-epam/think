@@ -12,6 +12,12 @@ class CommandError(RuntimeError):
     """Raised when an external command fails or exceeds its time limit."""
 
 
+def _output_text(value: str | bytes | None) -> str:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace").strip()
+    return value.strip() if value else ""
+
+
 def run_command(
     args: Sequence[str],
     *,
@@ -30,13 +36,23 @@ def run_command(
             timeout=timeout,
         )
     except subprocess.TimeoutExpired as error:
-        raise CommandError(f"{label} timed out after {timeout}s") from error
+        diagnostics = []
+        stdout = _output_text(error.stdout)
+        stderr = _output_text(error.stderr)
+        if stdout:
+            diagnostics.append(f"stdout: {stdout}")
+        if stderr:
+            diagnostics.append(f"stderr: {stderr}")
+        detail = f": {'; '.join(diagnostics)}" if diagnostics else ""
+        raise CommandError(f"{label} timed out after {timeout}s{detail}") from error
     except subprocess.CalledProcessError as error:
         diagnostics = []
-        if error.stdout.strip():
-            diagnostics.append(f"stdout: {error.stdout.strip()}")
-        if error.stderr.strip():
-            diagnostics.append(f"stderr: {error.stderr.strip()}")
+        stdout = _output_text(error.stdout)
+        stderr = _output_text(error.stderr)
+        if stdout:
+            diagnostics.append(f"stdout: {stdout}")
+        if stderr:
+            diagnostics.append(f"stderr: {stderr}")
         detail = f": {'; '.join(diagnostics)}" if diagnostics else ""
         raise CommandError(
             f"{label} failed with exit code {error.returncode}{detail}"

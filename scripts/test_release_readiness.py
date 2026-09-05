@@ -61,6 +61,30 @@ class ReleaseReadinessTests(unittest.TestCase):
                 any("install command version 0.2.0 != 0.1.0" in error for error in errors)
             )
 
+    def test_historical_release_links_do_not_break_current_version(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for relative in (
+                "apm.yml",
+                "README.md",
+                "CHANGELOG.md",
+                ".github/ISSUE_TEMPLATE/bug_report.md",
+            ):
+                destination = root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(ROOT / relative, destination)
+            changelog = root / "CHANGELOG.md"
+            changelog.write_text(
+                changelog.read_text(encoding="utf-8")
+                + "\n[0.0.9]: https://github.com/example/think/releases/tag/v0.0.9\n",
+                encoding="utf-8",
+            )
+
+            version, errors = release_readiness.validate_versions(root)
+
+            self.assertEqual(version, "0.1.0")
+            self.assertEqual(errors, [])
+
     def test_invalid_semver_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

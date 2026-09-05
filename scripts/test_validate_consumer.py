@@ -12,8 +12,9 @@ import validate_consumer
 
 class ValidateConsumerTests(unittest.TestCase):
     def deploy_skills(self, consumer: Path, target: str) -> None:
+        contract = validate_consumer.package_contract()
         for root in validate_consumer.expected_skill_roots(consumer, target):
-            for skill in validate_consumer.EXPECTED_SKILLS:
+            for skill in contract.skills:
                 skill_file = root / skill / "SKILL.md"
                 skill_file.parent.mkdir(parents=True, exist_ok=True)
                 skill_file.write_text(
@@ -21,23 +22,44 @@ class ValidateConsumerTests(unittest.TestCase):
                     encoding="utf-8",
                 )
 
-    def write_valid_lock(self, consumer: Path, target: str) -> None:
+    def write_valid_lock(
+        self,
+        consumer: Path,
+        target: str,
+        source: str | None = None,
+    ) -> None:
+        source = source or str(consumer)
+        contract = validate_consumer.package_contract()
         hashes = []
         for root in validate_consumer.expected_skill_roots(consumer, target):
-            for skill in validate_consumer.EXPECTED_SKILLS:
+            for skill in contract.skills:
                 skill_file = root / skill / "SKILL.md"
                 relative = skill_file.relative_to(consumer).as_posix()
                 hashes.append(
                     f"    {relative}: sha256:{validate_consumer.digest(skill_file)}"
                 )
+        provenance = []
+        if "#" in source:
+            repo, reference = source.rsplit("#", 1)
+            provenance = [
+                f"  repo_url: {repo}",
+                f"  resolved_ref: {reference}",
+                f"  resolved_commit: {'a' * 40}",
+            ]
+        else:
+            provenance = [
+                "  source: local",
+                f"  local_path: {Path(source).resolve()}",
+            ]
         (consumer / "apm.lock.yaml").write_text(
             "\n".join(
                 [
                     "dependencies:",
-                    f"- name: {validate_consumer.EXPECTED_PACKAGE}",
-                    f"  version: {validate_consumer.EXPECTED_VERSION}",
+                    f"- name: {contract.name}",
+                    f"  version: {contract.version}",
                     "  deployed_file_hashes:",
                     *hashes,
+                    *provenance,
                     "",
                 ]
             ),
@@ -86,12 +108,13 @@ class ValidateConsumerTests(unittest.TestCase):
             consumer = Path(directory)
             target = "agent-skills"
             self.deploy_skills(consumer, target)
-            self.write_valid_lock(consumer, target)
+            self.write_valid_lock(consumer, target, str(consumer))
 
             validate_consumer.validate_lock(
                 consumer / "apm.lock.yaml",
                 consumer,
                 target,
+                str(consumer),
             )
 
             lock = consumer / "apm.lock.yaml"
@@ -99,7 +122,7 @@ class ValidateConsumerTests(unittest.TestCase):
                 consumer
                 / ".agents"
                 / "skills"
-                / validate_consumer.EXPECTED_SKILLS[0]
+                / validate_consumer.package_contract().skills[0]
                 / "SKILL.md"
             )
             actual_hash = validate_consumer.digest(first_skill)
@@ -108,7 +131,43 @@ class ValidateConsumerTests(unittest.TestCase):
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(RuntimeError, "deployed hash mismatch"):
-                validate_consumer.validate_lock(lock, consumer, target)
+                validate_consumer.validate_lock(
+                    lock,
+                    consumer,
+                    target,
+                    str(consumer),
+                )
+
+    def test_remote_lock_requires_repo_ref_and_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            consumer = Path(directory)
+            target = "agent-skills"
+            source = "sergio-sisternes-epam/think#v0.1.0"
+            self.deploy_skills(consumer, target)
+            self.write_valid_lock(consumer, target, source)
+
+            validate_consumer.validate_lock(
+                consumer / "apm.lock.yaml",
+                consumer,
+                target,
+                source,
+            )
+
+            lock = consumer / "apm.lock.yaml"
+            lock.write_text(
+                lock.read_text(encoding="utf-8").replace(
+                    "  resolved_ref: v0.1.0\n",
+                    "",
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(RuntimeError, "missing source provenance"):
+                validate_consumer.validate_lock(
+                    lock,
+                    consumer,
+                    target,
+                    source,
+                )
 
     def test_stable_targets_require_all_native_skill_roots(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -172,7 +231,7 @@ class ValidateConsumerTests(unittest.TestCase):
                 del args, timeout
                 if phase == "initial-install":
                     self.deploy_skills(cwd, target)
-                    self.write_valid_lock(cwd, target)
+                    self.write_valid_lock(cwd, target, str(consumer))
                 elif phase == "frozen-replay":
                     with (cwd / "apm.lock.yaml").open("a", encoding="utf-8") as lock:
                         lock.write("# changed\n")
@@ -182,7 +241,7 @@ class ValidateConsumerTests(unittest.TestCase):
                 "frozen replay changed apm.lock.yaml",
             ):
                 validate_consumer.validate_consumer_in_directory(
-                    Path("/source"),
+                    str(consumer),
                     target,
                     consumer,
                     runner=fake_runner,
@@ -232,6 +291,20 @@ class ValidateConsumerTests(unittest.TestCase):
             self.assertIn("consumer_target<<", content)
             self.assertIn("consumer_validation<<", content)
             self.assertIn("\npass\n", content)
+
+    def test_remote_owner_repo_ref_source_is_forwarded_verbatim(self) -> None:
+        source = "sergio-sisternes-epam/think#v0.1.0"
+        with mock.patch.object(
+            validate_consumer,
+            "validate_consumer",
+            return_value="a" * 64,
+        ) as validator:
+            status = validate_consumer.main(
+                ["--source", source, "--target", "agent-skills"]
+            )
+
+        self.assertEqual(status, 0)
+        validator.assert_called_once_with(source, "agent-skills")
 
 
 if __name__ == "__main__":

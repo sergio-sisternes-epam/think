@@ -56,11 +56,6 @@ SURFACES = (
         "CHANGELOG.md",
         rf"^\[Unreleased\]: .+/compare/v({SEMVER})\.\.\.HEAD\s*$",
     ),
-    VersionSurface(
-        "changelog release link",
-        "CHANGELOG.md",
-        rf"^\[[^\]]+\]: .+/releases/tag/v({SEMVER})\s*$",
-    ),
 )
 CHANGELOG_PATTERN = (
     rf"^## \[({SEMVER})\] - [0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}\s*$"
@@ -113,6 +108,22 @@ def validate_versions(root: Path = ROOT) -> tuple[str | None, list[str]]:
         if actual != expected:
             errors.append(
                 f"{surface.path}: {surface.label} version {actual} != {expected}"
+            )
+
+    release_link = VersionSurface(
+        "changelog release link",
+        "CHANGELOG.md",
+        rf"^\[{re.escape(expected)}\]: .+/releases/tag/v({SEMVER})\s*$",
+    )
+    try:
+        actual = read_surface(release_link, root, contents)
+    except (OSError, ValueError) as error:
+        errors.append(str(error))
+    else:
+        if actual != expected:
+            errors.append(
+                "CHANGELOG.md: changelog release link version "
+                f"{actual} != {expected}"
             )
 
     try:

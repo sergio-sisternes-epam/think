@@ -70,6 +70,25 @@ class CommandRunnerTests(unittest.TestCase):
                     label="slow command",
                 )
 
+    def test_timeout_preserves_partial_stdout_and_stderr(self) -> None:
+        timeout = subprocess.TimeoutExpired(
+            ["command"],
+            7,
+            output=b"partial stdout",
+            stderr=b"partial stderr",
+        )
+        with mock.patch("command_runner.subprocess.run", side_effect=timeout):
+            with self.assertRaisesRegex(
+                command_runner.CommandError,
+                "stdout: partial stdout; stderr: partial stderr",
+            ):
+                command_runner.run_command(
+                    ["command"],
+                    cwd=Path("."),
+                    timeout=7,
+                    label="slow command",
+                )
+
     def test_run_git_returns_stripped_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             version = command_runner.run_git(
