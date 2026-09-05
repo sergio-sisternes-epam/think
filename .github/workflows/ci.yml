@@ -49,7 +49,10 @@ jobs:
           CANDIDATE_REVISION: ${{ inputs.candidate_revision }}
           PACKAGE_SOURCE: ${{ inputs.package_source }}
         run: |
-          if [[ "$PACKAGE_SOURCE" == *"#"* ]] &&
+          if [[ "$PACKAGE_SOURCE" != /* ]] &&
+            [[ "$PACKAGE_SOURCE" != ./* ]] &&
+            [[ "$PACKAGE_SOURCE" != ../* ]] &&
+            [[ "$PACKAGE_SOURCE" =~ ^[^/]+/[^#]+#[^#]+$ ]] &&
             [ -z "$CANDIDATE_REVISION" ]; then
             echo "::error title=Missing candidate revision::Remote package validation requires an exact candidate SHA."
             exit 1
@@ -123,7 +126,7 @@ jobs:
         id: consumer-validation
         env:
           EXPECTED_REVISION: ${{ inputs.candidate_revision }}
-          GITHUB_TOKEN: ${{ inputs.package_source != '' && github.token || '' }}
+          GITHUB_TOKEN: ${{ contains(inputs.package_source, '#') && !startsWith(inputs.package_source, '.') && !startsWith(inputs.package_source, '/') && github.token || '' }}
           PACKAGE_SOURCE: ${{ inputs.package_source || '.' }}
           TARGETS: ${{ matrix.target }}
         run: |
