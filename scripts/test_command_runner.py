@@ -35,6 +35,25 @@ class CommandRunnerTests(unittest.TestCase):
                     label="git failure",
                 )
 
+    def test_failure_preserves_stdout_and_stderr(self) -> None:
+        failure = subprocess.CalledProcessError(
+            1,
+            ["command"],
+            output="stdout clue",
+            stderr="stderr clue",
+        )
+        with mock.patch("command_runner.subprocess.run", side_effect=failure):
+            with self.assertRaisesRegex(
+                command_runner.CommandError,
+                "stdout: stdout clue; stderr: stderr clue",
+            ):
+                command_runner.run_command(
+                    ["command"],
+                    cwd=Path("."),
+                    timeout=30,
+                    label="dual-stream",
+                )
+
     def test_timeout_has_bounded_diagnostic(self) -> None:
         with mock.patch(
             "command_runner.subprocess.run",

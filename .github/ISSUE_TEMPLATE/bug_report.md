@@ -24,6 +24,7 @@ What you expected to happen.
 - **OS:** e.g. Ubuntu 22.04 / macOS 14
 - **APM CLI version:** e.g. 0.29.0
 - **Package (if applicable):** e.g. think-grill v0.1.0
+- **Target / harness:** e.g. agent-skills, copilot, cursor
 
 ## Additional context
 

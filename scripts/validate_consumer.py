@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
@@ -16,6 +17,8 @@ from command_runner import CommandError, run_command
 ROOT = Path(__file__).resolve().parents[1]
 COMMAND_TIMEOUT_SECONDS = 300
 EXPECTED_SKILLS = ("think-challenge", "think-grill", "think-ramble")
+EXPECTED_PACKAGE = "think"
+EXPECTED_VERSION = "0.1.0"
 SHARED_TARGETS = {
     "agent-skills",
     "codex",
@@ -52,6 +55,36 @@ def digest(path: Path) -> str:
     if not path.is_file():
         raise RuntimeError(f"{path}: expected generated consumer lock is missing")
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def validate_lock(lock: Path, consumer: Path, target: str) -> None:
+    if not lock.is_file():
+        raise RuntimeError(f"{lock}: expected generated consumer lock is missing")
+    content = lock.read_text(encoding="utf-8")
+    for expected in (
+        f"name: {EXPECTED_PACKAGE}",
+        f"version: {EXPECTED_VERSION}",
+        "deployed_file_hashes:",
+    ):
+        if expected not in content:
+            raise RuntimeError(f"{lock}: missing expected lock metadata '{expected}'")
+
+    for root in expected_skill_roots(consumer, target):
+        for skill in EXPECTED_SKILLS:
+            skill_file = root / skill / "SKILL.md"
+            relative = skill_file.relative_to(consumer).as_posix()
+            match = re.search(
+                rf"(?m)^\s+{re.escape(relative)}:\s+sha256:([0-9a-f]{{64}})\s*$",
+                content,
+            )
+            if not match:
+                raise RuntimeError(f"{lock}: missing deployed hash for {relative}")
+            actual = hashlib.sha256(skill_file.read_bytes()).hexdigest()
+            if match.group(1) != actual:
+                raise RuntimeError(
+                    f"{lock}: deployed hash mismatch for {relative}: "
+                    f"{match.group(1)} != {actual}"
+                )
 
 
 def parse_targets(target: str) -> set[str]:
@@ -112,7 +145,7 @@ def validate_deployment(consumer: Path, target: str) -> None:
 
 
 def validate_consumer_in_directory(
-    source: Path,
+    source: str,
     target: str,
     consumer: Path,
     runner: Callable[..., None] = run,
@@ -122,7 +155,7 @@ def validate_consumer_in_directory(
     runner(
         "apm",
         "install",
-        str(source),
+        source,
         "--target",
         target,
         "--no-policy",
@@ -132,6 +165,7 @@ def validate_consumer_in_directory(
     validate_deployment(consumer, target)
 
     lock = consumer / "apm.lock.yaml"
+    validate_lock(lock, consumer, target)
     before = digest(lock)
     runner(
         "apm",
@@ -161,7 +195,7 @@ def validate_consumer_in_directory(
     return after
 
 
-def validate_consumer(source: Path, target: str) -> str:
+def validate_consumer(source: str, target: str) -> str:
     with tempfile.TemporaryDirectory(prefix="think-consumer-") as directory:
         return validate_consumer_in_directory(source, target, Path(directory))
 
@@ -170,9 +204,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--source",
-        type=Path,
-        default=ROOT,
-        help="Checked-out Think package root",
+        default=str(ROOT),
+        help="Checked-out package path or remote owner/repo#ref source",
     )
     parser.add_argument("--target", required=True, help="APM target list")
     parser.add_argument(
@@ -183,12 +216,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        lock_hash = validate_consumer(args.source.resolve(), args.target)
+        source = args.source
+        if Path(source).exists():
+            source = str(Path(source).resolve())
+        lock_hash = validate_consumer(source, args.target)
     except RuntimeError as error:
         emit_error(
-            str(error),
+            f"{args.target}: {error}",
             title="Consumer validation failed",
-            file="scripts/validate_consumer.py",
         )
         fields = {
             "consumer_target": args.target,

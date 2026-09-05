@@ -71,6 +71,10 @@ class SourceContractTests(unittest.TestCase):
             "candidate_revision: ${{ needs.candidate.outputs.candidate_revision }}",
             release,
         )
+        self.assertIn(
+            "package_source: sergio-sisternes-epam/think#${{ github.ref_name }}",
+            release,
+        )
         self.assertLess(
             ci.index("Validate reusable candidate revision"),
             ci.index("uses: actions/checkout@"),
@@ -79,6 +83,9 @@ class SourceContractTests(unittest.TestCase):
         self.assertNotIn("secrets: inherit", ci + release)
         self.assertIn("python3 scripts/audit_source.py", ci)
         self.assertIn("--jobs 8", ci)
+        self.assertIn('--source "$PACKAGE_SOURCE"', ci)
+        self.assertIn("python3 scripts/release_notes.py", release)
+        self.assertIn('--notes "$release_notes"', release)
 
     def test_skills_only_package_does_not_use_compile_gate(self) -> None:
         workflows = "\n".join(

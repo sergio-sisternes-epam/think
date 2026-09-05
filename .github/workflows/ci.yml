@@ -14,6 +14,10 @@ on:
         description: Exact peeled release commit to validate
         required: false
         type: string
+      package_source:
+        description: Local path or immutable remote source to install
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -100,9 +104,12 @@ jobs:
       - name: Install and replay in a disposable consumer
         id: consumer-validation
         env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PACKAGE_SOURCE: ${{ inputs.package_source || '.' }}
           TARGETS: ${{ matrix.target }}
         run: |
           python3 scripts/validate_consumer.py \
+            --source "$PACKAGE_SOURCE" \
             --target "$TARGETS" \
             --github-output "$GITHUB_OUTPUT"
 

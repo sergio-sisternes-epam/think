@@ -20,8 +20,9 @@ The repository is private. Remote consumers need an APM-supported Git
 credential authorised to read its contents; request repository access from the
 [owner](https://github.com/sergio-sisternes-epam) before installing.
 
-The immutable `v0.1.0` install becomes available only after the separately
-approved first tag and GitHub Release are published.
+The immutable `v0.1.0` install becomes available when the separately approved
+annotated tag is published. Its GitHub Release then records the curated and
+generated release notes.
 
 ```bash
 apm install sergio-sisternes-epam/think#v0.1.0 --target agent-skills

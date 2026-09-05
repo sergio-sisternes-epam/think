@@ -16,5 +16,5 @@ Fixes #
 - [ ] `python3 -m unittest discover -s scripts -p 'test_*.py'` succeeds
 - [ ] [Release metadata](../CONTRIBUTING.md#fast-local-checks) matches `apm.yml`
 - [ ] [APM source audit](../CONTRIBUTING.md#fast-local-checks) succeeds
-- [ ] [Disposable consumer installs and frozen replay](../CONTRIBUTING.md#full-package-validation) succeed
+- [ ] If release-sensitive surfaces changed, [disposable consumer installs and frozen replay](../CONTRIBUTING.md#full-package-validation) succeed
 - [ ] CI checks pass

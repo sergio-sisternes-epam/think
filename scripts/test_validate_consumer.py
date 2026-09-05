@@ -21,6 +21,29 @@ class ValidateConsumerTests(unittest.TestCase):
                     encoding="utf-8",
                 )
 
+    def write_valid_lock(self, consumer: Path, target: str) -> None:
+        hashes = []
+        for root in validate_consumer.expected_skill_roots(consumer, target):
+            for skill in validate_consumer.EXPECTED_SKILLS:
+                skill_file = root / skill / "SKILL.md"
+                relative = skill_file.relative_to(consumer).as_posix()
+                hashes.append(
+                    f"    {relative}: sha256:{validate_consumer.digest(skill_file)}"
+                )
+        (consumer / "apm.lock.yaml").write_text(
+            "\n".join(
+                [
+                    "dependencies:",
+                    f"- name: {validate_consumer.EXPECTED_PACKAGE}",
+                    f"  version: {validate_consumer.EXPECTED_VERSION}",
+                    "  deployed_file_hashes:",
+                    *hashes,
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
     def test_missing_skills_directory_has_actionable_error(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             consumer = Path(directory)
@@ -57,6 +80,35 @@ class ValidateConsumerTests(unittest.TestCase):
                 "expected generated consumer lock is missing",
             ):
                 validate_consumer.digest(lock)
+
+    def test_lock_requires_complete_matching_deployed_hashes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            consumer = Path(directory)
+            target = "agent-skills"
+            self.deploy_skills(consumer, target)
+            self.write_valid_lock(consumer, target)
+
+            validate_consumer.validate_lock(
+                consumer / "apm.lock.yaml",
+                consumer,
+                target,
+            )
+
+            lock = consumer / "apm.lock.yaml"
+            first_skill = (
+                consumer
+                / ".agents"
+                / "skills"
+                / validate_consumer.EXPECTED_SKILLS[0]
+                / "SKILL.md"
+            )
+            actual_hash = validate_consumer.digest(first_skill)
+            lock.write_text(
+                lock.read_text(encoding="utf-8").replace(actual_hash, "0" * 64, 1),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(RuntimeError, "deployed hash mismatch"):
+                validate_consumer.validate_lock(lock, consumer, target)
 
     def test_stable_targets_require_all_native_skill_roots(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -120,9 +172,10 @@ class ValidateConsumerTests(unittest.TestCase):
                 del args, timeout
                 if phase == "initial-install":
                     self.deploy_skills(cwd, target)
-                    (cwd / "apm.lock.yaml").write_text("before\n", encoding="utf-8")
+                    self.write_valid_lock(cwd, target)
                 elif phase == "frozen-replay":
-                    (cwd / "apm.lock.yaml").write_text("after\n", encoding="utf-8")
+                    with (cwd / "apm.lock.yaml").open("a", encoding="utf-8") as lock:
+                        lock.write("# changed\n")
 
             with self.assertRaisesRegex(
                 RuntimeError,
@@ -150,8 +203,8 @@ class ValidateConsumerTests(unittest.TestCase):
 
         self.assertEqual(status, 1)
         self.assertIn(
-            "::error title=Consumer validation failed,"
-            "file=scripts/validate_consumer.py::frozen replay failed",
+            "::error title=Consumer validation failed::"
+            "agent-skills: frozen replay failed",
             stderr.getvalue(),
         )
         self.assertIn("consumer_validation=failed", stdout.getvalue())

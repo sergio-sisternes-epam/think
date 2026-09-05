@@ -32,8 +32,12 @@ def run_command(
     except subprocess.TimeoutExpired as error:
         raise CommandError(f"{label} timed out after {timeout}s") from error
     except subprocess.CalledProcessError as error:
-        diagnostic = error.stderr.strip() or error.stdout.strip()
-        detail = f": {diagnostic}" if diagnostic else ""
+        diagnostics = []
+        if error.stdout.strip():
+            diagnostics.append(f"stdout: {error.stdout.strip()}")
+        if error.stderr.strip():
+            diagnostics.append(f"stderr: {error.stderr.strip()}")
+        detail = f": {'; '.join(diagnostics)}" if diagnostics else ""
         raise CommandError(
             f"{label} failed with exit code {error.returncode}{detail}"
         ) from error

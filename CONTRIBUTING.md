@@ -25,8 +25,8 @@ Thank you for your interest in contributing to `think`.
 
 This is a single APM package, not a marketplace. Do not add a `marketplace:` block or `packages/` tree.
 It has no dependencies and therefore no source `apm.lock.yaml`. Each consumer
-installation creates its own lock with the exact source revision and deployed
-file hashes.
+installation creates its own lock with the resolved source identity and
+deployed file hashes.
 
 ## Fast local checks
 
@@ -82,7 +82,7 @@ or a compatibility-breaking skill contract.
 5. The tag workflow verifies the authoritative remote tag object in an isolated
    namespace, requires it to peel to exact current `main`, reruns every gate,
    re-verifies the object immediately before publication, and creates the
-   GitHub Release.
+   GitHub Release with curated CHANGELOG content followed by generated notes.
 
 Never move, overwrite, delete, or reuse a pushed release tag. If validation
 fails before a GitHub Release is created, fix `main`, increment the version,
