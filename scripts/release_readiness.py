@@ -5,11 +5,11 @@ from __future__ import annotations
 
 import argparse
 import re
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from ci_output import emit_error, write_github_outputs
+from ci_output import emit_error, print_summary, write_github_outputs
+from command_runner import run_command
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,8 +67,19 @@ CHANGELOG_PATTERN = (
 )
 
 
-def read_surface(surface: VersionSurface, root: Path = ROOT) -> str:
-    content = (root / surface.path).read_text(encoding="utf-8")
+def read_surface(
+    surface: VersionSurface,
+    root: Path = ROOT,
+    contents: dict[str, str] | None = None,
+) -> str:
+    if contents is None:
+        content = (root / surface.path).read_text(encoding="utf-8")
+    else:
+        if surface.path not in contents:
+            contents[surface.path] = (root / surface.path).read_text(
+                encoding="utf-8"
+            )
+        content = contents[surface.path]
     matches = re.findall(surface.pattern, content, re.MULTILINE)
     if len(matches) != 1:
         raise ValueError(
@@ -78,20 +89,24 @@ def read_surface(surface: VersionSurface, root: Path = ROOT) -> str:
     return matches[0]
 
 
-def manifest_version(root: Path = ROOT) -> str:
-    return read_surface(SURFACES[0], root)
+def manifest_version(
+    root: Path = ROOT,
+    contents: dict[str, str] | None = None,
+) -> str:
+    return read_surface(SURFACES[0], root, contents)
 
 
 def validate_versions(root: Path = ROOT) -> tuple[str | None, list[str]]:
+    contents: dict[str, str] = {}
     try:
-        expected = manifest_version(root)
+        expected = manifest_version(root, contents)
     except (OSError, ValueError) as error:
         return None, [str(error)]
 
     errors: list[str] = []
     for surface in SURFACES[1:]:
         try:
-            actual = read_surface(surface, root)
+            actual = read_surface(surface, root, contents)
         except (OSError, ValueError) as error:
             errors.append(str(error))
             continue
@@ -101,7 +116,7 @@ def validate_versions(root: Path = ROOT) -> tuple[str | None, list[str]]:
             )
 
     try:
-        changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+        changelog = contents["CHANGELOG.md"]
         changelog_versions = re.findall(CHANGELOG_PATTERN, changelog, re.MULTILINE)
     except OSError as error:
         errors.append(str(error))
@@ -117,22 +132,12 @@ def validate_versions(root: Path = ROOT) -> tuple[str | None, list[str]]:
 
 
 def git(*args: str, root: Path = ROOT) -> str:
-    try:
-        result = subprocess.run(
-            ["git", *args],
-            cwd=root,
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=GIT_TIMEOUT_SECONDS,
-        )
-    except subprocess.TimeoutExpired as error:
-        raise RuntimeError(
-            f"git {' '.join(args)} timed out after {GIT_TIMEOUT_SECONDS}s"
-        ) from error
-    except subprocess.CalledProcessError as error:
-        diagnostic = error.stderr.strip() or error.stdout.strip()
-        raise RuntimeError(diagnostic or f"git {' '.join(args)} failed") from error
+    result = run_command(
+        ["git", *args],
+        cwd=root,
+        timeout=GIT_TIMEOUT_SECONDS,
+        label=f"git {' '.join(args)}",
+    )
     return result.stdout.strip()
 
 
@@ -205,14 +210,18 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
 
     version, version_errors = validate_versions(root)
     if version is None:
-        print("candidate_revision: unknown")
-        print("package_version: unknown")
-        print("expected_tag: unknown")
-        print("is_prerelease: unknown")
-        print("version_consistency: blocked")
+        print_summary(
+            {
+                "candidate_revision": "unknown",
+                "package_version": "unknown",
+                "expected_tag": "unknown",
+                "is_prerelease": "unknown",
+                "version_consistency": "blocked",
+            }
+        )
         for error in version_errors:
             emit_error(error)
-        print("release_metadata_decision: blocked")
+        print("release_metadata_decision=blocked")
         write_github_outputs(
             args.github_output,
             {
@@ -235,24 +244,27 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
     errors = version_errors + tag_errors + commit_errors + main_errors
     candidate_revision = args.commit or current_commit(root)
 
-    print(f"candidate_revision: {candidate_revision}")
-    print(f"package_version: {version}")
-    print(f"expected_tag: v{version}")
-    print(f"is_prerelease: {str(is_prerelease(version)).lower()}")
-    print(f"version_consistency: {'blocked' if version_errors else 'pass'}")
+    summary: dict[str, str] = {
+        "candidate_revision": candidate_revision,
+        "package_version": version,
+        "expected_tag": f"v{version}",
+        "is_prerelease": str(is_prerelease(version)).lower(),
+        "version_consistency": "blocked" if version_errors else "pass",
+    }
     if args.tag:
-        print(f"tag_consistency: {'blocked' if tag_errors else 'pass'}")
+        summary["tag_consistency"] = "blocked" if tag_errors else "pass"
     if args.commit:
-        print(f"commit_consistency: {'blocked' if commit_errors else 'pass'}")
+        summary["commit_consistency"] = "blocked" if commit_errors else "pass"
     if args.require_current_main:
-        print(f"main_revision: {main_revision or 'unknown'}")
-        print(f"current_main_consistency: {'blocked' if main_errors else 'pass'}")
+        summary["main_revision"] = main_revision or "unknown"
+        summary["current_main_consistency"] = "blocked" if main_errors else "pass"
+    print_summary(summary)
 
     decision = "blocked" if errors else "pass"
     if errors:
         for error in errors:
             emit_error(error)
-    print(f"release_metadata_decision: {decision}")
+    print(f"release_metadata_decision={decision}")
 
     fields: dict[str, str] = {
         "candidate_revision": candidate_revision,

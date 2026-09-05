@@ -5,12 +5,12 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import subprocess
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
 
-from ci_output import emit_error, write_github_outputs
+from ci_output import emit_error, print_summary, write_github_outputs
+from command_runner import CommandError, run_command
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,22 +37,14 @@ def run(
 ) -> None:
     print(f"consumer_phase={phase}:start")
     try:
-        subprocess.run(
-            args,
+        run_command(
+            list(args),
             cwd=cwd,
-            check=True,
-            capture_output=True,
-            text=True,
             timeout=timeout,
+            label=phase,
         )
-    except subprocess.TimeoutExpired as error:
-        raise RuntimeError(f"{phase} timed out after {timeout}s") from error
-    except subprocess.CalledProcessError as error:
-        diagnostic = error.stderr.strip() or error.stdout.strip()
-        detail = f": {diagnostic}" if diagnostic else ""
-        raise RuntimeError(
-            f"{phase} failed with exit code {error.returncode}{detail}"
-        ) from error
+    except CommandError as error:
+        raise RuntimeError(str(error)) from error
     print(f"consumer_phase={phase}:pass")
 
 
@@ -212,8 +204,7 @@ def main(argv: list[str] | None = None) -> int:
         "frozen_lock_sha256": lock_hash,
         "consumer_validation": "pass",
     }
-    for key, value in fields.items():
-        print(f"{key}={value}")
+    print_summary(fields)
     write_github_outputs(args.github_output, fields)
     return 0
 

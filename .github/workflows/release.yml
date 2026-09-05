@@ -79,6 +79,7 @@ jobs:
       - validation
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # GitHub grants permissions per job, so read-only reverification also sees this token.
     permissions:
       contents: write
     steps:

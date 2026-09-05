@@ -1,6 +1,6 @@
 # think
 
-> Harness-agnostic thinking primitives as one APM package: ramble, grill, and challenge.
+> Three thinking skills across nine agent harnesses: ramble, grill, and challenge.
 
 Install this repo as a single package. Skills live under `.apm/skills/`. There is no marketplace index and no Atlas store.
 
@@ -16,6 +16,10 @@ Conversation-only use works when no durable store is present. If Atlas (or anoth
 
 ## Install
 
+The repository is private. Remote consumers need an APM-supported Git
+credential authorised to read its contents; request repository access from the
+[owner](https://github.com/sergio-sisternes-epam) before installing.
+
 The immutable `v0.1.0` install becomes available only after the separately
 approved first tag and GitHub Release are published.
 
@@ -29,10 +33,8 @@ Or from a local clone:
 apm install /path/to/think --target agent-skills
 ```
 
-The repository is private. Remote consumers need GitHub Contents: read access
-through an APM-supported Git credential; request repository access from the
-[owner](https://github.com/sergio-sisternes-epam) before installing. Think has
-no package dependencies, so its CI and release workflow require no custom PAT.
+Think has no package dependencies, so its CI and release workflow require no
+custom PAT.
 
 ## Compatibility
 

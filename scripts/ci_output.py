@@ -30,7 +30,7 @@ def emit_error(
     file: str | None = None,
     stream: TextIO | None = None,
 ) -> None:
-    destination = stream or sys.stdout
+    destination = stream or sys.stderr
     print(f"error: {message}", file=destination)
     if os.environ.get("GITHUB_ACTIONS") != "true":
         return
@@ -57,3 +57,8 @@ def write_github_outputs(path: Path | None, values: Mapping[str, object]) -> Non
             while delimiter in value:
                 delimiter = f"ghadelimiter_{uuid.uuid4().hex}"
             output.write(f"{key}<<{delimiter}\n{value}\n{delimiter}\n")
+
+
+def print_summary(values: Mapping[str, object]) -> None:
+    for key, value in values.items():
+        print(f"{key}={value}")

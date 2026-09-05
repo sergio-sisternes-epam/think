@@ -164,8 +164,10 @@ jobs:
           fi
           echo "main_revision=$MAIN_REVISION" | tee -a "$GITHUB_STEP_SUMMARY"
           if [ "$EXACT_MAIN_RESULT" != success ]; then
-            echo "release_readiness_decision=blocked: exact-main validation failed" |
-              tee -a "$GITHUB_STEP_SUMMARY"
+            {
+              echo "release_readiness_decision=blocked"
+              echo "release_readiness_reason=exact-main validation failed"
+            } | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
           echo "release_readiness_decision=ready-to-tag" |

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
 from unittest import mock
@@ -136,23 +136,49 @@ class ValidateConsumerTests(unittest.TestCase):
                 )
 
     def test_cli_failure_emits_annotation_and_status(self) -> None:
-        output = StringIO()
+        stdout = StringIO()
+        stderr = StringIO()
         with mock.patch.object(
             validate_consumer,
             "validate_consumer",
             side_effect=RuntimeError("frozen replay failed"),
         ):
             with mock.patch.dict("os.environ", {"GITHUB_ACTIONS": "true"}):
-                with redirect_stdout(output):
-                    status = validate_consumer.main(["--target", "agent-skills"])
+                with redirect_stdout(stdout):
+                    with redirect_stderr(stderr):
+                        status = validate_consumer.main(["--target", "agent-skills"])
 
         self.assertEqual(status, 1)
         self.assertIn(
             "::error title=Consumer validation failed,"
             "file=scripts/validate_consumer.py::frozen replay failed",
-            output.getvalue(),
+            stderr.getvalue(),
         )
-        self.assertIn("consumer_validation=failed", output.getvalue())
+        self.assertIn("consumer_validation=failed", stdout.getvalue())
+
+    def test_cli_success_writes_github_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output_path = Path(directory) / "github-output"
+
+            with mock.patch.object(
+                validate_consumer,
+                "validate_consumer",
+                return_value="a" * 64,
+            ):
+                status = validate_consumer.main(
+                    [
+                        "--target",
+                        "agent-skills",
+                        "--github-output",
+                        str(output_path),
+                    ]
+                )
+
+            self.assertEqual(status, 0)
+            content = output_path.read_text(encoding="utf-8")
+            self.assertIn("consumer_target<<", content)
+            self.assertIn("consumer_validation<<", content)
+            self.assertIn("\npass\n", content)
 
 
 if __name__ == "__main__":

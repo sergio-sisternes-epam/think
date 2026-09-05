@@ -1,9 +1,9 @@
 name: think
 version: 0.1.0
 description: >
-  Challenge, Grill, and Ramble are harness-agnostic thinking primitives for
-  search-grounded counters, Socratic questioning, and free-form capture.
-  Conversation-only when no durable store is present.
+  think-ramble (free-form capture), think-grill (Socratic questioning), and
+  think-challenge (search-grounded counters) are harness-agnostic thinking
+  primitives. Conversation-only when no durable store is present.
 author: Sergio Sisternes
 license: Apache-2.0
 homepage: https://github.com/sergio-sisternes-epam/think

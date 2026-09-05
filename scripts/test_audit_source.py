@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -10,11 +9,12 @@ from pathlib import Path
 from unittest import mock
 
 import audit_source
+from command_runner import CommandError
 
 
 class AuditSourceTests(unittest.TestCase):
     def git(self, root: Path, *args: str) -> None:
-        subprocess.run(
+        __import__("subprocess").run(
             ["git", *args],
             cwd=root,
             check=True,
@@ -49,8 +49,8 @@ class AuditSourceTests(unittest.TestCase):
 
     def test_timeout_becomes_actionable_audit_failure(self) -> None:
         with mock.patch(
-            "audit_source.subprocess.run",
-            side_effect=subprocess.TimeoutExpired(["apm", "audit"], 5),
+            "audit_source.run_command",
+            side_effect=CommandError("APM source audit for apm.yml timed out after 5s"),
         ):
             result = audit_source.audit_file("apm.yml", timeout=5)
 
@@ -58,23 +58,41 @@ class AuditSourceTests(unittest.TestCase):
         self.assertIn("timed out after 5s", result.output)
 
     def test_mixed_results_emit_diagnostic_annotation_and_fail(self) -> None:
-        output = StringIO()
+        stdout = StringIO()
+        stderr = StringIO()
         results = [
             audit_source.AuditResult("apm.yml", 0, "ok"),
             audit_source.AuditResult("README.md", 1, "invalid frontmatter\nmore"),
         ]
 
         with mock.patch.dict("os.environ", {"GITHUB_ACTIONS": "true"}):
-            with redirect_stdout(output):
-                status = audit_source.report_results(results)
+            with redirect_stdout(stdout):
+                with mock.patch("sys.stderr", stderr):
+                    status = audit_source.report_results(results)
 
         self.assertEqual(status, 1)
         self.assertIn(
             "::error title=APM source audit failed,file=README.md::"
             "APM source audit failed: invalid frontmatter",
-            output.getvalue(),
+            stderr.getvalue(),
         )
-        self.assertIn("source_audit_failures=1", output.getvalue())
+        self.assertIn("source_audit_failures=1", stdout.getvalue())
+
+    def test_report_writes_github_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output_path = Path(directory) / "github-output"
+
+            status = audit_source.report_results(
+                [audit_source.AuditResult("apm.yml", 0, "ok")],
+                output_path,
+            )
+
+            self.assertEqual(status, 0)
+            content = output_path.read_text(encoding="utf-8")
+            self.assertIn("source_audit_files<<", content)
+            self.assertIn("\n1\n", content)
+            self.assertIn("source_audit<<", content)
+            self.assertIn("\npass\n", content)
 
 
 if __name__ == "__main__":

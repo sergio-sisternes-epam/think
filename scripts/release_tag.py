@@ -4,12 +4,12 @@
 from __future__ import annotations
 
 import argparse
-import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from ci_output import emit_error, write_github_outputs
+from ci_output import emit_error, print_summary, write_github_outputs
+from command_runner import CommandError, run_command
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,21 +30,14 @@ class ReleaseTag:
 
 def git(*args: str, root: Path = ROOT) -> str:
     try:
-        result = subprocess.run(
+        result = run_command(
             ["git", *args],
             cwd=root,
-            check=True,
-            capture_output=True,
-            text=True,
             timeout=GIT_TIMEOUT_SECONDS,
+            label=f"git {' '.join(args)}",
         )
-    except subprocess.TimeoutExpired as error:
-        raise ReleaseTagError(
-            f"git {' '.join(args)} timed out after {GIT_TIMEOUT_SECONDS}s"
-        ) from error
-    except subprocess.CalledProcessError as error:
-        diagnostic = error.stderr.strip() or error.stdout.strip()
-        raise ReleaseTagError(diagnostic or f"git {' '.join(args)} failed") from error
+    except CommandError as error:
+        raise ReleaseTagError(str(error)) from error
     return result.stdout.strip()
 
 
@@ -108,8 +101,7 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
         ("candidate_revision", verified.candidate_revision),
         ("main_revision", verified.main_revision),
     )
-    for key, value in fields:
-        print(f"{key}={value}")
+    print_summary(dict(fields))
     write_github_outputs(args.github_output, dict(fields))
     return 0
 

@@ -14,6 +14,10 @@ below resolve after `v0.1.0` is published.
 
 ### Added
 
+- Install one package to use three thinking skills consistently across nine
+  agent harnesses.
+- Reproduce the reviewed release exactly through immutable source tags and
+  consumer-owned frozen locks.
 - Added the `think-ramble`, `think-grill`, and `think-challenge` APM skills.
 - Added the Apache-2.0 licence text.
 - Added deterministic source audits, disposable multi-runtime consumer installs,

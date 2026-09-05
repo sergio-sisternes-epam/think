@@ -6,12 +6,12 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import os
-import subprocess
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
-from ci_output import emit_error, write_github_outputs
+from ci_output import emit_error, print_summary, write_github_outputs
+from command_runner import CommandError, run_command
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,29 +32,20 @@ class AuditResult:
 
 def tracked_files(root: Path = ROOT) -> list[str]:
     try:
-        result = subprocess.run(
+        result = run_command(
             ["git", "ls-files", "--cached", "-z"],
             cwd=root,
-            check=True,
-            capture_output=True,
             timeout=GIT_TIMEOUT_SECONDS,
+            label="git source enumeration",
         )
-    except subprocess.TimeoutExpired as error:
-        raise SourceAuditError(
-            f"git source enumeration timed out after {GIT_TIMEOUT_SECONDS}s"
-        ) from error
-    except subprocess.CalledProcessError as error:
-        diagnostic = error.stderr.decode("utf-8", errors="replace").strip()
-        raise SourceAuditError(
-            diagnostic or "git source enumeration failed"
-        ) from error
+    except CommandError as error:
+        raise SourceAuditError(str(error)) from error
 
     root = root.resolve()
     files = []
-    for raw_path in result.stdout.split(b"\0"):
-        if not raw_path:
+    for path in result.stdout.split("\0"):
+        if not path:
             continue
-        path = raw_path.decode("utf-8")
         candidate = root / path
         if candidate.is_symlink():
             raise SourceAuditError(f"{path}: tracked symbolic links are not auditable")
@@ -73,24 +64,15 @@ def audit_file(
     timeout: int = AUDIT_TIMEOUT_SECONDS,
 ) -> AuditResult:
     try:
-        result = subprocess.run(
+        result = run_command(
             ["apm", "audit", "--file", path],
             cwd=root,
-            capture_output=True,
-            text=True,
             timeout=timeout,
+            label=f"APM source audit for {path}",
+            check=False,
         )
-    except subprocess.TimeoutExpired as error:
-        output = "\n".join(
-            part.strip()
-            for part in (
-                error.stdout if isinstance(error.stdout, str) else "",
-                error.stderr if isinstance(error.stderr, str) else "",
-            )
-            if part and part.strip()
-        )
-        diagnostic = f"APM source audit timed out after {timeout}s"
-        return AuditResult(path, 124, f"{diagnostic}\n{output}".strip())
+    except CommandError as error:
+        return AuditResult(path, 124, str(error))
     output = "\n".join(
         part.strip() for part in (result.stdout, result.stderr) if part.strip()
     )
@@ -117,8 +99,7 @@ def report_results(
         "source_audit_failures": len(failures),
         "source_audit": "failed" if failures else "pass",
     }
-    for key, value in fields.items():
-        print(f"{key}={value}")
+    print_summary(fields)
     write_github_outputs(github_output, fields)
     return 1 if failures else 0
 

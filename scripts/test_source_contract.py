@@ -111,6 +111,7 @@ class SourceContractTests(unittest.TestCase):
         issue_template = (
             ROOT / ".github/ISSUE_TEMPLATE/bug_report.md"
         ).read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
         versions = {
             re.search(r'(?m)^\s*APM_VERSION:\s*"([^"]+)"$', ci).group(1),
@@ -119,6 +120,7 @@ class SourceContractTests(unittest.TestCase):
                 r"(?m)^- \*\*APM CLI version:\*\* e\.g\. ([^\s]+)",
                 issue_template,
             ).group(1),
+            re.search(r"Think is validated with APM CLI ([^ ]+)", readme).group(1),
         }
         self.assertEqual(versions, {"0.29.0"})
 
