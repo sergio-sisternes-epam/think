@@ -52,14 +52,21 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn("pull_request:", ci)
         self.assertIn('if [ "$REF_CREATED" != true ]', release)
         self.assertIn('EXPECTED_TAG_OBJECT:', release)
-        self.assertIn('[ "$tag_object" != "$EXPECTED_TAG_OBJECT" ]', release)
-        self.assertIn('[ "$tag_commit" != "$EXPECTED_CANDIDATE" ]', release)
+        self.assertIn(
+            '[ "$REVERIFIED_TAG_OBJECT" != "$EXPECTED_TAG_OBJECT" ]',
+            release,
+        )
+        self.assertIn(
+            '[ "$REVERIFIED_CANDIDATE" != "$EXPECTED_CANDIDATE" ]',
+            release,
+        )
         for result in ("METADATA_RESULT", "SOURCE_RESULT", "CONSUMER_RESULT"):
             self.assertIn(f'[ "${result}" != success ]', ci)
         self.assertIn(
-            '[ "$CANDIDATE_REVISION" != "$main_revision" ]',
+            '--require-current-main',
             ci,
         )
+        self.assertNotIn("main_revision=\"$(git rev-parse", ci)
         self.assertIn(
             "candidate_revision: ${{ needs.candidate.outputs.candidate_revision }}",
             release,
@@ -72,11 +79,21 @@ class SourceContractTests(unittest.TestCase):
         self.assertNotIn("secrets: inherit", ci + release)
         self.assertIn("run: python3 scripts/audit_source.py", ci)
 
+    def test_skills_only_package_does_not_use_compile_gate(self) -> None:
+        workflows = "\n".join(
+            (ROOT / relative).read_text(encoding="utf-8")
+            for relative in (".github/workflows/ci.yml", ".github/workflows/release.yml")
+        )
+        contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+
+        self.assertNotIn("apm compile", workflows)
+        self.assertIn("`apm compile` is not a validation gate", contributing)
+
     def test_consumer_validation_is_repository_owned(self) -> None:
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
         self.assertIn(
-            'python3 scripts/validate_consumer.py --target "$TARGETS"',
+            '--target "$TARGETS"',
             ci,
         )
 

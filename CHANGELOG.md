@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2026-09-05
 
+Prepared for the separately approved first tag and GitHub Release. The links
+below resolve after `v0.1.0` is published.
+
 ### Added
 
 - Added the `think-ramble`, `think-grill`, and `think-challenge` APM skills.
@@ -16,9 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added deterministic source audits, disposable multi-runtime consumer installs,
   and frozen consumer-lock replay.
 - Added exact-main release readiness and immutable annotated-tag verification.
-
-### Changed
-
 - Added canonical repository metadata for the dependency-free APM source
   package.
 - Normalised the manifest description to printable ASCII.

@@ -16,6 +16,9 @@ Conversation-only use works when no durable store is present. If Atlas (or anoth
 
 ## Install
 
+The immutable `v0.1.0` install becomes available only after the separately
+approved first tag and GitHub Release are published.
+
 ```bash
 apm install sergio-sisternes-epam/think#v0.1.0 --target agent-skills
 ```
@@ -44,8 +47,10 @@ To exercise every stable runtime explicitly:
 apm install sergio-sisternes-epam/think#v0.1.0 --target claude,codex,copilot,cursor,gemini,grok-build,kiro,opencode,windsurf
 ```
 
-APM 0.29 deploys skills for these targets through the shared
-`.agents/skills/<skill>/SKILL.md` substrate.
+APM 0.29 deploys Codex, Copilot, Cursor, Gemini, OpenCode, Windsurf, and the
+generic `agent-skills` target through `.agents/skills/<skill>/SKILL.md`.
+Claude, Grok Build, and Kiro use their native `.claude/skills/`,
+`.grok/skills/`, and `.kiro/skills/` roots respectively.
 
 ## Layout
 

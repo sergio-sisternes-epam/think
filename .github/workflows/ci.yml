@@ -25,6 +25,7 @@ jobs:
   metadata:
     name: Release metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Validate reusable candidate revision
         if: inputs.candidate_revision != ''
@@ -45,14 +46,18 @@ jobs:
       - name: Run release-readiness tests
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
       - name: Check release version surfaces
+        id: release-metadata
         env:
           CANDIDATE_REVISION: ${{ inputs.candidate_revision || github.sha }}
-        run: python3 scripts/release_readiness.py --commit "$CANDIDATE_REVISION"
+        run: |
+          python3 scripts/release_readiness.py \
+            --commit "$CANDIDATE_REVISION" \
+            --github-output "$GITHUB_OUTPUT"
 
   source:
     name: APM source integrity
-    needs: metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -62,12 +67,13 @@ jobs:
           setup-only: true
           apm-version: ${{ env.APM_VERSION }}
       - name: Audit tracked source files
-        run: python3 scripts/audit_source.py
+        id: source-audit
+        run: python3 scripts/audit_source.py --github-output "$GITHUB_OUTPUT"
 
   consumer:
     name: Consumer install (${{ matrix.name }})
-    needs: source
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -85,9 +91,13 @@ jobs:
           apm-version: ${{ env.APM_VERSION }}
           setup-only: true
       - name: Install and replay in a disposable consumer
+        id: consumer-validation
         env:
           TARGETS: ${{ matrix.target }}
-        run: python3 scripts/validate_consumer.py --target "$TARGETS"
+        run: |
+          python3 scripts/validate_consumer.py \
+            --target "$TARGETS" \
+            --github-output "$GITHUB_OUTPUT"
 
   readiness:
     name: Release readiness decision
@@ -97,19 +107,35 @@ jobs:
       - consumer
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         if: needs.metadata.result == 'success'
         with:
           fetch-depth: 0
           ref: ${{ inputs.candidate_revision || github.sha }}
+      - name: Verify exact current main
+        id: exact-main
+        if: >-
+          needs.metadata.result == 'success' &&
+          github.event_name != 'pull_request' &&
+          github.ref_type != 'tag'
+        env:
+          CANDIDATE_REVISION: ${{ inputs.candidate_revision || github.sha }}
+        run: |
+          python3 scripts/release_readiness.py \
+           --commit "$CANDIDATE_REVISION" \
+           --require-current-main \
+           --github-output "$GITHUB_OUTPUT"
       - name: Record candidate decision
+        if: always()
         env:
           CANDIDATE_REVISION: ${{ inputs.candidate_revision || github.sha }}
           CONSUMER_RESULT: ${{ needs.consumer.result }}
           EVENT_NAME: ${{ github.event_name }}
+          EXACT_MAIN_RESULT: ${{ steps.exact-main.outcome }}
+          MAIN_REVISION: ${{ steps.exact-main.outputs.main_revision }}
           METADATA_RESULT: ${{ needs.metadata.result }}
-          REF_NAME: ${{ github.ref_name }}
           REF_TYPE: ${{ github.ref_type }}
           SOURCE_RESULT: ${{ needs.source.result }}
         run: |
@@ -136,12 +162,9 @@ jobs:
               tee -a "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          git fetch --no-tags origin main:refs/remotes/origin/main
-          main_revision="$(git rev-parse refs/remotes/origin/main)"
-          echo "main_revision=$main_revision" | tee -a "$GITHUB_STEP_SUMMARY"
-          if [ "$REF_NAME" != main ] ||
-            [ "$CANDIDATE_REVISION" != "$main_revision" ]; then
-            echo "release_readiness_decision=blocked: candidate is not exact current main" |
+          echo "main_revision=$MAIN_REVISION" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$EXACT_MAIN_RESULT" != success ]; then
+            echo "release_readiness_decision=blocked: exact-main validation failed" |
               tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
           fi

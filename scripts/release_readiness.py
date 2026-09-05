@@ -4,14 +4,16 @@
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from ci_output import emit_error, write_github_outputs
+
 
 ROOT = Path(__file__).resolve().parents[1]
+GIT_TIMEOUT_SECONDS = 120
 VERSION_NUMBER = r"(?:0|[1-9][0-9]*)"
 CORE_VERSION = rf"{VERSION_NUMBER}\.{VERSION_NUMBER}\.{VERSION_NUMBER}"
 NON_NUMERIC_IDENTIFIER = r"[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*"
@@ -114,15 +116,39 @@ def validate_versions(root: Path = ROOT) -> tuple[str | None, list[str]]:
     return expected, errors
 
 
-def current_commit(root: Path = ROOT) -> str:
-    result = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=root,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+def git(*args: str, root: Path = ROOT) -> str:
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(
+            f"git {' '.join(args)} timed out after {GIT_TIMEOUT_SECONDS}s"
+        ) from error
+    except subprocess.CalledProcessError as error:
+        diagnostic = error.stderr.strip() or error.stdout.strip()
+        raise RuntimeError(diagnostic or f"git {' '.join(args)} failed") from error
     return result.stdout.strip()
+
+
+def current_commit(root: Path = ROOT) -> str:
+    return git("rev-parse", "HEAD", root=root)
+
+
+def current_main_revision(root: Path = ROOT, remote: str = "origin") -> str:
+    git(
+        "fetch",
+        "--no-tags",
+        remote,
+        "+refs/heads/main:refs/remotes/origin/main",
+        root=root,
+    )
+    return git("rev-parse", "refs/remotes/origin/main", root=root)
 
 
 def validate_commit(candidate: str, root: Path = ROOT) -> list[str]:
@@ -135,6 +161,21 @@ def validate_commit(candidate: str, root: Path = ROOT) -> list[str]:
     return []
 
 
+def validate_current_main(
+    candidate: str,
+    root: Path = ROOT,
+) -> tuple[str | None, list[str]]:
+    try:
+        main_revision = current_main_revision(root)
+    except RuntimeError as error:
+        return None, [str(error)]
+    if candidate.lower() != main_revision.lower():
+        return main_revision, [
+            f"candidate commit {candidate} != exact current main {main_revision}"
+        ]
+    return main_revision, []
+
+
 def is_prerelease(version: str) -> bool:
     return "-" in version
 
@@ -144,20 +185,25 @@ def validate_tag(tag: str, version: str) -> list[str]:
     return [] if tag == expected else [f"release tag {tag} != {expected}"]
 
 
-def emit_error(error: str) -> None:
-    print(f"error: {error}")
-    if os.environ.get("GITHUB_ACTIONS") == "true":
-        escaped = error.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-        print(f"::error::{escaped}")
-
-
-def main() -> int:
+def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tag", help="Pushed release tag to compare with apm.yml")
     parser.add_argument("--commit", help="Candidate commit SHA")
-    args = parser.parse_args()
+    parser.add_argument(
+        "--require-current-main",
+        action="store_true",
+        help="Fetch origin/main and require the candidate to match it exactly",
+    )
+    parser.add_argument(
+        "--github-output",
+        type=Path,
+        help="Optional GitHub Actions output file",
+    )
+    args = parser.parse_args(argv)
+    if args.require_current_main and not args.commit:
+        parser.error("--require-current-main requires --commit")
 
-    version, version_errors = validate_versions()
+    version, version_errors = validate_versions(root)
     if version is None:
         print("candidate_revision: unknown")
         print("package_version: unknown")
@@ -167,13 +213,29 @@ def main() -> int:
         for error in version_errors:
             emit_error(error)
         print("release_metadata_decision: blocked")
+        write_github_outputs(
+            args.github_output,
+            {
+                "candidate_revision": "unknown",
+                "package_version": "unknown",
+                "expected_tag": "unknown",
+                "is_prerelease": "unknown",
+                "version_consistency": "blocked",
+                "release_metadata_decision": "blocked",
+            },
+        )
         return 1
 
     tag_errors = validate_tag(args.tag, version) if args.tag else []
-    commit_errors = validate_commit(args.commit) if args.commit else []
-    errors = version_errors + tag_errors + commit_errors
+    commit_errors = validate_commit(args.commit, root) if args.commit else []
+    main_revision = None
+    main_errors: list[str] = []
+    if args.require_current_main and not commit_errors:
+        main_revision, main_errors = validate_current_main(args.commit, root)
+    errors = version_errors + tag_errors + commit_errors + main_errors
+    candidate_revision = args.commit or current_commit(root)
 
-    print(f"candidate_revision: {args.commit or current_commit()}")
+    print(f"candidate_revision: {candidate_revision}")
     print(f"package_version: {version}")
     print(f"expected_tag: v{version}")
     print(f"is_prerelease: {str(is_prerelease(version)).lower()}")
@@ -182,15 +244,33 @@ def main() -> int:
         print(f"tag_consistency: {'blocked' if tag_errors else 'pass'}")
     if args.commit:
         print(f"commit_consistency: {'blocked' if commit_errors else 'pass'}")
+    if args.require_current_main:
+        print(f"main_revision: {main_revision or 'unknown'}")
+        print(f"current_main_consistency: {'blocked' if main_errors else 'pass'}")
 
+    decision = "blocked" if errors else "pass"
     if errors:
         for error in errors:
             emit_error(error)
-        print("release_metadata_decision: blocked")
-        return 1
+    print(f"release_metadata_decision: {decision}")
 
-    print("release_metadata_decision: pass")
-    return 0
+    fields: dict[str, str] = {
+        "candidate_revision": candidate_revision,
+        "package_version": version,
+        "expected_tag": f"v{version}",
+        "is_prerelease": str(is_prerelease(version)).lower(),
+        "version_consistency": "blocked" if version_errors else "pass",
+        "release_metadata_decision": decision,
+    }
+    if args.tag:
+        fields["tag_consistency"] = "blocked" if tag_errors else "pass"
+    if args.commit:
+        fields["commit_consistency"] = "blocked" if commit_errors else "pass"
+    if args.require_current_main:
+        fields["main_revision"] = main_revision or "unknown"
+        fields["current_main_consistency"] = "blocked" if main_errors else "pass"
+    write_github_outputs(args.github_output, fields)
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":

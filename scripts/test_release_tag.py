@@ -14,6 +14,17 @@ import release_tag
 
 
 class ReleaseTagTests(unittest.TestCase):
+    def read_outputs(self, path: Path) -> dict[str, str]:
+        content = path.read_text(encoding="utf-8").splitlines()
+        values = {}
+        index = 0
+        while index < len(content):
+            key, delimiter = content[index].split("<<", 1)
+            values[key] = content[index + 1]
+            self.assertEqual(content[index + 2], delimiter)
+            index += 3
+        return values
+
     def git(self, root: Path, *args: str) -> str:
         return subprocess.run(
             ["git", *args],
@@ -122,9 +133,36 @@ class ReleaseTagTests(unittest.TestCase):
 
         self.assertEqual(status, 1)
         self.assertIn(
-            "::error title=Release tag verification failed::missing%25tag",
+            "::error title=Release tag verification failed::"
+            "release tag verification failed: missing%25tag",
             stderr.getvalue(),
         )
+
+    def test_cli_success_writes_verified_github_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            remote, source, commit = self.create_remote(root)
+            self.git(source, "tag", "-a", "v0.1.0", "-m", "Think v0.1.0")
+            self.git(source, "push", "origin", "refs/tags/v0.1.0")
+            checkout = self.clone_checkout(root, remote, commit)
+            output_path = root / "github-output"
+
+            status = release_tag.main(
+                [
+                    "--tag",
+                    "v0.1.0",
+                    "--github-output",
+                    str(output_path),
+                ],
+                checkout,
+            )
+
+            self.assertEqual(status, 0)
+            outputs = self.read_outputs(output_path)
+            self.assertEqual(outputs["tag_ref"], "refs/release-tags/v0.1.0")
+            self.assertEqual(outputs["candidate_revision"], commit)
+            self.assertEqual(outputs["main_revision"], commit)
+            self.assertRegex(outputs["tag_object"], r"^[0-9a-f]{40}$")
 
 
 if __name__ == "__main__":

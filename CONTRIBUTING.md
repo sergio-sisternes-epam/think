@@ -28,11 +28,11 @@ It has no dependencies and therefore no source `apm.lock.yaml`. Each consumer
 installation creates its own lock with the exact source revision and deployed
 file hashes.
 
-## Development workflow
+## Fast local checks
 
 1. Create a feature branch from `main`.
 2. Edit skills under `.apm/skills/<name>/SKILL.md`.
-3. Validate before pushing:
+3. Run the fast repository checks before pushing:
 
    ```bash
    python3 -m unittest discover -s scripts -p 'test_*.py'
@@ -40,18 +40,23 @@ file hashes.
    python3 scripts/audit_source.py
    ```
 
-4. Install the checked-out package into a disposable consumer, run a frozen
-   replay against the generated consumer lock, and run
-   `apm audit --ci --no-policy --no-fail-fast`:
+4. Open a pull request against `main`.
 
-   ```bash
-   python3 scripts/validate_consumer.py --target agent-skills
-   python3 scripts/validate_consumer.py \
-     --target claude,codex,copilot,cursor,gemini,grok-build,kiro,opencode,windsurf
-   ```
+## Full package validation
 
-   CI exercises both target sets with the same repository-owned validator.
-5. Open a pull request against `main`.
+For release-sensitive changes to package metadata, installation, audit, or
+workflow code, install the checkout into disposable consumers, replay the
+generated lock with `--frozen`, and run `apm audit --ci --no-policy
+--no-fail-fast`:
+
+```bash
+python3 scripts/validate_consumer.py --target agent-skills
+python3 scripts/validate_consumer.py \
+  --target claude,codex,copilot,cursor,gemini,grok-build,kiro,opencode,windsurf
+```
+
+CI always exercises both target sets with the same repository-owned validator,
+so ordinary skill-prose edits do not need to repeat the full matrix locally.
 
 `apm compile` is not a validation gate for Think because this package contains
 skills rather than `.apm/instructions/`. `apm pack` is also not a release gate:
@@ -86,6 +91,8 @@ tag.
 The workflow uses only the repository `GITHUB_TOKEN`: read-only during
 validation and `contents: write` only in the Release creation job. No custom
 secret is required because Think has no private package dependency.
+Reusable CI remains read-only and cannot elevate permissions beyond its
+caller's token context.
 
 ## Repository protection
 
@@ -93,7 +100,10 @@ Protect `main` with the **Release metadata**, **APM source integrity**, both
 **Consumer install** checks, and **Release readiness decision**. Require
 branches to be current, and block direct pushes, force pushes, and deletion.
 Protect `v*` tags so only release maintainers can create them and no actor can
-update or delete them.
+update or delete them. The designated release-maintainer or administrator
+bypass exists only to permit approved tag creation; because provider bypasses
+can also bypass mutation rules, never use that bypass to update or delete an
+existing release tag.
 
 ## Commit conventions
 

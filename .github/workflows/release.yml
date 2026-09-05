@@ -12,62 +12,57 @@ jobs:
   candidate:
     name: Verify release candidate
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
-      candidate_revision: ${{ steps.verify.outputs.candidate_revision }}
-      is_prerelease: ${{ steps.verify.outputs.is_prerelease }}
-      tag_object: ${{ steps.verify.outputs.tag_object }}
+      candidate_revision: ${{ steps.verify-tag.outputs.candidate_revision }}
+      is_prerelease: ${{ steps.verify-metadata.outputs.is_prerelease }}
+      tag_object: ${{ steps.verify-tag.outputs.tag_object }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
-      - name: Verify immutable exact-main tag
-        id: verify
+      - name: Require a newly created tag event
         env:
           REF_CREATED: ${{ github.event.created }}
-          TAG: ${{ github.ref_name }}
         run: |
-          set -euo pipefail
           if [ "$REF_CREATED" != true ]; then
             echo "::error title=Immutable release tag::Release tags must be newly created, never updated."
             exit 1
           fi
-          tag_report="$RUNNER_TEMP/release-tag.txt"
-          readiness_report="$RUNNER_TEMP/release-readiness.txt"
+      - name: Verify authoritative immutable exact-main tag
+        id: verify-tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
           python3 scripts/release_tag.py \
             --tag "$TAG" \
-            --github-output "$GITHUB_OUTPUT" |
-            tee "$tag_report"
-          tag_ref="$(awk -F= '$1 == "tag_ref" { print $2 }' "$tag_report")"
-          tag_object="$(awk -F= '$1 == "tag_object" { print $2 }' "$tag_report")"
-          tag_commit="$(awk -F= '$1 == "candidate_revision" { print $2 }' "$tag_report")"
-          main_commit="$(awk -F= '$1 == "main_revision" { print $2 }' "$tag_report")"
-          if [ "$tag_ref" != "refs/release-tags/$TAG" ] ||
-            [ "${#tag_object}" -ne 40 ] ||
-            [[ "$tag_object" == *[!0-9a-f]* ]] ||
-            [ "${#tag_commit}" -ne 40 ] ||
-            [[ "$tag_commit" == *[!0-9a-f]* ]] ||
-            [ "${#main_commit}" -ne 40 ] ||
-            [[ "$main_commit" == *[!0-9a-f]* ]]; then
-            echo "::error title=Invalid release tag report::Authoritative tag verification returned incomplete or malformed data."
-            exit 1
-          fi
+            --github-output "$GITHUB_OUTPUT"
+      - name: Verify release metadata
+        id: verify-metadata
+        env:
+          TAG: ${{ github.ref_name }}
+          TAG_COMMIT: ${{ steps.verify-tag.outputs.candidate_revision }}
+        run: |
           python3 scripts/release_readiness.py \
             --tag "$TAG" \
-            --commit "$tag_commit" |
-            tee "$readiness_report"
-          prerelease="$(awk '$1 == "is_prerelease:" { print $2 }' "$readiness_report")"
-          if [ "$prerelease" != true ] && [ "$prerelease" != false ]; then
-            echo "::error title=Invalid release metadata::Could not classify the release tag."
-            exit 1
-          fi
-          echo "is_prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+            --commit "$TAG_COMMIT" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Record release candidate
+        env:
+          IS_PRERELEASE: ${{ steps.verify-metadata.outputs.is_prerelease }}
+          MAIN_COMMIT: ${{ steps.verify-tag.outputs.main_revision }}
+          TAG: ${{ github.ref_name }}
+          TAG_COMMIT: ${{ steps.verify-tag.outputs.candidate_revision }}
+          TAG_OBJECT: ${{ steps.verify-tag.outputs.tag_object }}
+          TAG_REF: ${{ steps.verify-tag.outputs.tag_ref }}
+        run: |
           {
             echo "tag=$TAG"
-            echo "authoritative_tag_ref=$tag_ref"
-            echo "annotated_tag_object=$tag_object"
-            echo "candidate_revision=$tag_commit"
-            echo "main_revision=$main_commit"
-            echo "is_prerelease=$prerelease"
+            echo "authoritative_tag_ref=$TAG_REF"
+            echo "annotated_tag_object=$TAG_OBJECT"
+            echo "candidate_revision=$TAG_COMMIT"
+            echo "main_revision=$MAIN_COMMIT"
+            echo "is_prerelease=$IS_PRERELEASE"
             echo "release_candidate_decision=ready-for-validation"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -83,6 +78,7 @@ jobs:
       - candidate
       - validation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
@@ -90,22 +86,35 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ needs.candidate.outputs.candidate_revision }}
+      # This deliberate second remote fetch closes the validation-to-publication gap.
+      - name: Reverify authoritative release tag
+        id: reverify-tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          python3 scripts/release_tag.py \
+            --tag "$TAG" \
+            --github-output "$GITHUB_OUTPUT"
       - name: Create GitHub release
         env:
           EXPECTED_CANDIDATE: ${{ needs.candidate.outputs.candidate_revision }}
           EXPECTED_TAG_OBJECT: ${{ needs.candidate.outputs.tag_object }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IS_PRERELEASE: ${{ needs.candidate.outputs.is_prerelease }}
+          REVERIFIED_CANDIDATE: ${{ steps.reverify-tag.outputs.candidate_revision }}
+          REVERIFIED_TAG_OBJECT: ${{ steps.reverify-tag.outputs.tag_object }}
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          tag_report="$RUNNER_TEMP/release-tag-final.txt"
-          python3 scripts/release_tag.py --tag "$TAG" | tee "$tag_report"
-          tag_object="$(awk -F= '$1 == "tag_object" { print $2 }' "$tag_report")"
-          tag_commit="$(awk -F= '$1 == "candidate_revision" { print $2 }' "$tag_report")"
-          if [ "$tag_object" != "$EXPECTED_TAG_OBJECT" ] ||
-            [ "$tag_commit" != "$EXPECTED_CANDIDATE" ]; then
+          if [ "$REVERIFIED_TAG_OBJECT" != "$EXPECTED_TAG_OBJECT" ] ||
+            [ "$REVERIFIED_CANDIDATE" != "$EXPECTED_CANDIDATE" ]; then
             echo "::error title=Release tag changed::The authoritative tag no longer matches the validated candidate."
+            exit 1
+          fi
+          gh auth status
+          repository="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
+          if [ "$repository" != "$GITHUB_REPOSITORY" ]; then
+            echo "::error title=Repository mismatch::gh resolved $repository instead of $GITHUB_REPOSITORY."
             exit 1
           fi
           if gh release view "$TAG" >/dev/null 2>&1; then

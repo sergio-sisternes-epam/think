@@ -4,14 +4,16 @@
 from __future__ import annotations
 
 import argparse
-import os
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from ci_output import emit_error, write_github_outputs
+
 
 ROOT = Path(__file__).resolve().parents[1]
+GIT_TIMEOUT_SECONDS = 120
 
 
 class ReleaseTagError(RuntimeError):
@@ -34,7 +36,12 @@ def git(*args: str, root: Path = ROOT) -> str:
             check=True,
             capture_output=True,
             text=True,
+            timeout=GIT_TIMEOUT_SECONDS,
         )
+    except subprocess.TimeoutExpired as error:
+        raise ReleaseTagError(
+            f"git {' '.join(args)} timed out after {GIT_TIMEOUT_SECONDS}s"
+        ) from error
     except subprocess.CalledProcessError as error:
         diagnostic = error.stderr.strip() or error.stdout.strip()
         raise ReleaseTagError(diagnostic or f"git {' '.join(args)} failed") from error
@@ -75,7 +82,7 @@ def verify_remote_tag(
     return ReleaseTag(tag_ref, tag_object, candidate_revision, main_revision)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tag", required=True, help="Release tag name")
     parser.add_argument(
@@ -83,23 +90,16 @@ def main() -> int:
         type=Path,
         help="Optional GitHub Actions output file",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     try:
-        verified = verify_remote_tag(args.tag)
+        verified = verify_remote_tag(args.tag, root)
     except ReleaseTagError as error:
-        print(f"release tag verification failed: {error}", file=sys.stderr)
-        if os.environ.get("GITHUB_ACTIONS") == "true":
-            diagnostic = str(error)
-            escaped = (
-                diagnostic.replace("%", "%25")
-                .replace("\r", "%0D")
-                .replace("\n", "%0A")
-            )
-            print(
-                f"::error title=Release tag verification failed::{escaped}",
-                file=sys.stderr,
-            )
+        emit_error(
+            f"release tag verification failed: {error}",
+            title="Release tag verification failed",
+            stream=sys.stderr,
+        )
         return 1
 
     fields = (
@@ -110,10 +110,7 @@ def main() -> int:
     )
     for key, value in fields:
         print(f"{key}={value}")
-    if args.github_output:
-        with args.github_output.open("a", encoding="utf-8") as output:
-            for key, value in fields:
-                output.write(f"{key}={value}\n")
+    write_github_outputs(args.github_output, dict(fields))
     return 0
 
 
