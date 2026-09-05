@@ -20,6 +20,8 @@ jobs:
       tag_object: ${{ steps.verify-tag.outputs.tag_object }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
       - name: Require a newly created tag event
         env:
           REF_CREATED: ${{ github.event.created }}
@@ -31,6 +33,7 @@ jobs:
       - name: Verify authoritative immutable exact-main tag
         id: verify-tag
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
           python3 scripts/release_tag.py \
@@ -88,10 +91,12 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ needs.candidate.outputs.candidate_revision }}
+          persist-credentials: false
       # This deliberate second remote fetch closes the validation-to-publication gap.
       - name: Reverify authoritative release tag
         id: reverify-tag
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
           python3 scripts/release_tag.py \

@@ -20,9 +20,11 @@ Conversation-only use works when no durable store is present. If Atlas (or anoth
 Install [APM](https://github.com/microsoft/apm) 0.29.0 or later, then install
 Think.
 
-The repository is private. Remote consumers need an APM-supported Git
-credential authorised to read its contents; request repository access from the
-[owner](https://github.com/sergio-sisternes-epam) before installing.
+The repository is private. Remote consumers need an
+[APM-supported Git credential](https://microsoft.github.io/apm/getting-started/authentication/)
+authorised to read its contents; request repository access from the
+[owner](https://github.com/sergio-sisternes-epam) and verify the active account
+with `gh auth status` before installing.
 
 The immutable `v0.1.0` install becomes available when the separately approved
 annotated tag is published. Its GitHub Release then records the curated and

@@ -101,6 +101,21 @@ class ReleaseTagTests(unittest.TestCase):
             ):
                 release_tag.verify_remote_tag("v0.1.0", checkout)
 
+    def test_remote_fetch_receives_ephemeral_git_auth_environment(self) -> None:
+        with mock.patch.object(release_tag, "run_git", return_value="value") as run_git:
+            release_tag.git("fetch", "origin", root=Path("."), token="secret")
+
+        environment = run_git.call_args.kwargs["env"]
+        self.assertEqual(environment["GIT_CONFIG_COUNT"], "1")
+        self.assertEqual(
+            environment["GIT_CONFIG_KEY_0"],
+            "http.https://github.com/.extraheader",
+        )
+        self.assertEqual(
+            environment["GIT_CONFIG_VALUE_0"],
+            "AUTHORIZATION: bearer secret",
+        )
+
     def test_tag_not_on_current_main_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

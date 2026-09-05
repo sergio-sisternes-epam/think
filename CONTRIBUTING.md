@@ -8,7 +8,7 @@ Thank you for your interest in contributing to `think`.
 |------|----------------|---------|
 | Git | 2.x | [git-scm.com](https://git-scm.com) |
 | Python | 3.12 | Used by the repository-owned release checks |
-| APM CLI | 0.29.0 (see `APM_VERSION` in CI) | Use `microsoft/apm-action@v1` in CI; pin the same version locally |
+| APM CLI | 0.29.0 (see `APM_VERSION` in CI) | CI verifies the pinned release archive checksum; pin the same version locally |
 
 ## Repository structure
 
@@ -79,6 +79,17 @@ or a compatibility-breaking skill contract.
    `release_readiness_decision=ready-to-tag`.
 4. After separate approval, create and push the matching annotated `vX.Y.Z` tag
    against that exact commit.
+
+   ```bash
+   candidate_revision=<approved-40-character-SHA>
+   version=<X.Y.Z>
+   git fetch --no-tags origin \
+     +refs/heads/main:refs/remotes/origin/main
+   test "$(git rev-parse refs/remotes/origin/main)" = "$candidate_revision"
+   git tag -a "v$version" "$candidate_revision" -m "Think v$version"
+   git push origin "refs/tags/v$version"
+   ```
+
 5. The tag workflow verifies the authoritative remote tag object in an isolated
    namespace, requires it to peel to exact current `main`, reruns every gate,
    re-verifies the object immediately before publication, and creates the

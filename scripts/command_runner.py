@@ -4,18 +4,57 @@
 from __future__ import annotations
 
 import subprocess
-from collections.abc import Sequence
+import tempfile
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+
+
+MAX_CAPTURE_BYTES = 65536
 
 
 class CommandError(RuntimeError):
     """Raised when an external command fails or exceeds its time limit."""
 
 
-def _output_text(value: str | bytes | None) -> str:
+def _output_text(
+    value: str | bytes | None,
+    limit: int | None = MAX_CAPTURE_BYTES,
+    strip: bool = True,
+) -> str:
     if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace").strip()
-    return value.strip() if value else ""
+        data = value
+    elif value:
+        data = value.encode("utf-8")
+    else:
+        return ""
+    truncated = limit is not None and len(data) > limit
+    if truncated:
+        omitted = len(data) - limit
+        data = data[-limit:]
+    text = data.decode("utf-8", errors="replace")
+    if strip:
+        text = text.strip()
+    if truncated:
+        return f"[... {omitted} bytes truncated ...]\n{text}"
+    return text
+
+
+def _captured_output(
+    stream: object,
+    limit: int | None,
+    strip: bool = True,
+) -> str:
+    stream.flush()
+    size = stream.tell()
+    if limit is not None and size > limit:
+        stream.seek(size - limit)
+        data = stream.read()
+        return (
+            f"[... {size - limit} bytes truncated ...]\n"
+            f"{_output_text(data, None, strip)}"
+        )
+    stream.seek(0)
+    return _output_text(stream.read(), limit, strip)
 
 
 def run_command(
@@ -25,38 +64,85 @@ def run_command(
     timeout: int,
     label: str,
     check: bool = True,
+    env: Mapping[str, str] | None = None,
+    capture_limit: int | None = MAX_CAPTURE_BYTES,
+    strip_output: bool = True,
 ) -> subprocess.CompletedProcess[str]:
-    try:
-        return subprocess.run(
-            args,
-            cwd=cwd,
-            check=check,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
+    with (
+        tempfile.TemporaryFile() as stdout_file,
+        tempfile.TemporaryFile() as stderr_file,
+    ):
+        try:
+            completed = subprocess.run(
+                args,
+                cwd=cwd,
+                check=False,
+                stdout=stdout_file,
+                stderr=stderr_file,
+                timeout=timeout,
+                env=env,
+            )
+        except subprocess.TimeoutExpired as error:
+            stdout = _captured_output(
+                stdout_file, capture_limit, strip_output
+            ) or _output_text(
+                error.stdout, capture_limit, strip_output
+            )
+            stderr = _captured_output(
+                stderr_file, capture_limit, strip_output
+            ) or _output_text(
+                error.stderr, capture_limit, strip_output
+            )
+            diagnostics = []
+            if stdout:
+                diagnostics.append(f"stdout: {stdout}")
+            if stderr:
+                diagnostics.append(f"stderr: {stderr}")
+            detail = f": {'; '.join(diagnostics)}" if diagnostics else ""
+            raise CommandError(f"{label} timed out after {timeout}s{detail}") from error
+        except subprocess.CalledProcessError as error:
+            stdout = _captured_output(
+                stdout_file, capture_limit, strip_output
+            ) or _output_text(
+                error.stdout, capture_limit, strip_output
+            )
+            stderr = _captured_output(
+                stderr_file, capture_limit, strip_output
+            ) or _output_text(
+                error.stderr, capture_limit, strip_output
+            )
+            diagnostics = []
+            if stdout:
+                diagnostics.append(f"stdout: {stdout}")
+            if stderr:
+                diagnostics.append(f"stderr: {stderr}")
+            detail = f": {'; '.join(diagnostics)}" if diagnostics else ""
+            raise CommandError(
+                f"{label} failed with exit code {error.returncode}{detail}"
+            ) from error
+
+        stdout = (
+            _output_text(completed.stdout, capture_limit, strip_output)
+            if completed.stdout is not None
+            else _captured_output(stdout_file, capture_limit, strip_output)
         )
-    except subprocess.TimeoutExpired as error:
-        diagnostics = []
-        stdout = _output_text(error.stdout)
-        stderr = _output_text(error.stderr)
-        if stdout:
-            diagnostics.append(f"stdout: {stdout}")
-        if stderr:
-            diagnostics.append(f"stderr: {stderr}")
-        detail = f": {'; '.join(diagnostics)}" if diagnostics else ""
-        raise CommandError(f"{label} timed out after {timeout}s{detail}") from error
-    except subprocess.CalledProcessError as error:
-        diagnostics = []
-        stdout = _output_text(error.stdout)
-        stderr = _output_text(error.stderr)
-        if stdout:
-            diagnostics.append(f"stdout: {stdout}")
-        if stderr:
-            diagnostics.append(f"stderr: {stderr}")
-        detail = f": {'; '.join(diagnostics)}" if diagnostics else ""
-        raise CommandError(
-            f"{label} failed with exit code {error.returncode}{detail}"
-        ) from error
+        stderr = (
+            _output_text(completed.stderr, capture_limit, strip_output)
+            if completed.stderr is not None
+            else _captured_output(stderr_file, capture_limit, strip_output)
+        )
+        result = subprocess.CompletedProcess(args, completed.returncode, stdout, stderr)
+        if check and result.returncode != 0:
+            diagnostics = []
+            if stdout:
+                diagnostics.append(f"stdout: {stdout}")
+            if stderr:
+                diagnostics.append(f"stderr: {stderr}")
+            detail = f": {'; '.join(diagnostics)}" if diagnostics else ""
+            raise CommandError(
+                f"{label} failed with exit code {result.returncode}{detail}"
+            )
+        return result
 
 
 def run_git(
@@ -64,11 +150,16 @@ def run_git(
     cwd: Path,
     timeout: int,
     strip: bool = True,
+    env: Mapping[str, str] | None = None,
+    capture_limit: int | None = MAX_CAPTURE_BYTES,
 ) -> str:
     result = run_command(
         ["git", *args],
         cwd=cwd,
         timeout=timeout,
         label=f"git {' '.join(args)}",
+        env=env,
+        capture_limit=capture_limit,
+        strip_output=strip,
     )
     return result.stdout.strip() if strip else result.stdout

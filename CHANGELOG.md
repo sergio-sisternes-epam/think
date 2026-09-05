@@ -23,6 +23,8 @@ below resolve after `v0.1.0` is published.
 - Reproduce the reviewed release exactly through immutable source tags and
   consumer-owned frozen locks, backed by deterministic audits and disposable
   multi-runtime installs.
+- Verify the pinned APM CLI release archive before any source or consumer gate
+  executes.
 - Documented canonical package metadata, supported targets, and the
   first-release operating procedure.
 

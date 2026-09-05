@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import re
+import sys
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -18,17 +19,33 @@ from release_readiness import manifest_version
 
 ROOT = Path(__file__).resolve().parents[1]
 COMMAND_TIMEOUT_SECONDS = 300
-SHARED_TARGETS = {
-    "agent-skills",
-    "codex",
-    "copilot",
-    "cursor",
-    "gemini",
-    "opencode",
-    "windsurf",
+TARGET_SKILL_ROOTS = {
+    "agent-skills": ".agents/skills",
+    "claude": ".claude/skills",
+    "codex": ".agents/skills",
+    "copilot": ".agents/skills",
+    "cursor": ".agents/skills",
+    "gemini": ".agents/skills",
+    "grok-build": ".grok/skills",
+    "kiro": ".kiro/skills",
+    "opencode": ".agents/skills",
+    "windsurf": ".agents/skills",
 }
-NATIVE_TARGETS = {"claude", "grok-build", "kiro"}
-SUPPORTED_TARGETS = SHARED_TARGETS | NATIVE_TARGETS
+TARGET_PROFILES = {
+    "agent-skills": ("agent-skills",),
+    "stable-runtimes": (
+        "claude",
+        "codex",
+        "copilot",
+        "cursor",
+        "gemini",
+        "grok-build",
+        "kiro",
+        "opencode",
+        "windsurf",
+    ),
+}
+SUPPORTED_TARGETS = set(TARGET_SKILL_ROOTS)
 
 
 @dataclass(frozen=True)
@@ -69,14 +86,21 @@ def run(
 ) -> None:
     print(f"consumer_phase={phase}:start", flush=True)
     try:
-        run_command(
+        result = run_command(
             list(args),
             cwd=cwd,
             timeout=timeout,
             label=phase,
         )
     except CommandError as error:
+        print(f"consumer_phase={phase}:fail", flush=True)
         raise RuntimeError(str(error)) from error
+    if result.stderr:
+        print(
+            f"consumer_phase={phase}:diagnostic\n{result.stderr}",
+            file=sys.stderr,
+            flush=True,
+        )
     print(f"consumer_phase={phase}:pass", flush=True)
 
 
@@ -170,15 +194,7 @@ def parse_targets(target: str) -> set[str]:
 
 def expected_skill_roots(consumer: Path, target: str) -> tuple[Path, ...]:
     targets = parse_targets(target)
-    roots = set()
-    if targets & SHARED_TARGETS:
-        roots.add(consumer / ".agents" / "skills")
-    if "claude" in targets:
-        roots.add(consumer / ".claude" / "skills")
-    if "grok-build" in targets:
-        roots.add(consumer / ".grok" / "skills")
-    if "kiro" in targets:
-        roots.add(consumer / ".kiro" / "skills")
+    roots = {consumer / TARGET_SKILL_ROOTS[value] for value in targets}
     return tuple(sorted(roots))
 
 

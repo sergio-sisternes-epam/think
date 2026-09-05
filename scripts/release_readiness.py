@@ -126,12 +126,9 @@ def validate_versions(root: Path = ROOT) -> tuple[str | None, list[str]]:
                 f"{actual} != {expected}"
             )
 
-    try:
-        changelog = contents["CHANGELOG.md"]
+    changelog = contents.get("CHANGELOG.md")
+    if changelog is not None:
         changelog_versions = re.findall(CHANGELOG_PATTERN, changelog, re.MULTILINE)
-    except OSError as error:
-        errors.append(str(error))
-    else:
         count = changelog_versions.count(expected)
         if count != 1:
             errors.append(

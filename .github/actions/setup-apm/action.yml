@@ -1,0 +1,46 @@
+name: Setup verified APM
+description: Install the pinned APM CLI after verifying its release archive.
+
+inputs:
+  version:
+    description: Exact APM CLI version
+    required: true
+  archive-sha256:
+    description: SHA-256 of the Linux x86-64 release archive
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Download and verify APM
+      shell: bash
+      env:
+        APM_ARCHIVE_SHA256: ${{ inputs.archive-sha256 }}
+        APM_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        if [ "$RUNNER_OS" != Linux ] || [ "$RUNNER_ARCH" != X64 ]; then
+          echo "::error title=Unsupported runner::Verified APM setup supports Linux X64 only."
+          exit 1
+        fi
+
+        asset="apm-linux-x86_64.tar.gz"
+        archive="$RUNNER_TEMP/$asset"
+        extract_dir="$RUNNER_TEMP/apm-$APM_VERSION-linux-x86_64"
+        url="https://github.com/microsoft/apm/releases/download/v$APM_VERSION/$asset"
+
+        curl --fail --show-error --silent --location \
+          --proto '=https' --tlsv1.2 --retry 3 \
+          --output "$archive" "$url"
+        actual_sha256="$(sha256sum "$archive" | awk '{print $1}')"
+        if [ "$actual_sha256" != "$APM_ARCHIVE_SHA256" ]; then
+          echo "::error title=APM checksum mismatch::Expected $APM_ARCHIVE_SHA256 but downloaded $actual_sha256."
+          exit 1
+        fi
+
+        mkdir -p "$extract_dir"
+        tar -xzf "$archive" -C "$extract_dir"
+        binary_dir="$extract_dir/apm-linux-x86_64"
+        chmod 0755 "$binary_dir/apm"
+        echo "$binary_dir" >> "$GITHUB_PATH"
+        "$binary_dir/apm" --version

@@ -4,6 +4,8 @@ import re
 import unittest
 from pathlib import Path
 
+import validate_consumer
+
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_SKILLS = {"think-challenge", "think-grill", "think-ramble"}
@@ -85,18 +87,16 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn("--jobs 8", ci)
         self.assertIn('--source "$PACKAGE_SOURCE"', ci)
         self.assertIn('--expected-revision "$EXPECTED_REVISION"', ci)
-        self.assertIn(
-            "GITHUB_TOKEN: ${{ contains(inputs.package_source, '#')",
-            ci,
-        )
+        self.assertIn("GITHUB_TOKEN: ${{ inputs.package_source != ''", ci)
         self.assertIn("workflow_dispatch:\n    inputs:\n      candidate_revision:", ci)
         self.assertIn(
-            '[[ "$PACKAGE_SOURCE" =~ ^[^/]+/[^#]+#[^#]+$ ]]',
+            '[[ "$PACKAGE_SOURCE" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[A-Za-z0-9._/-]+$ ]]',
             ci,
         )
-        self.assertIn("!startsWith(inputs.package_source, '.')", ci)
-        self.assertIn("!startsWith(inputs.package_source, '/')", ci)
-        self.assertGreaterEqual(ci.count("persist-credentials: false"), 3)
+        self.assertIn("consumer:\n    name:", ci)
+        self.assertIn("needs: metadata", ci)
+        self.assertGreaterEqual((ci + release).count("persist-credentials: false"), 5)
+        self.assertIn("GITHUB_TOKEN: ${{ github.token }}", release)
         self.assertIn("python3 scripts/release_notes.py", release)
         self.assertIn('--notes "$release_notes"', release)
 
@@ -125,6 +125,32 @@ class SourceContractTests(unittest.TestCase):
             self.assertTrue(external_uses, relative)
             for action, revision in external_uses:
                 self.assertRegex(revision, r"^[0-9a-f]{40}$", action)
+
+    def test_apm_archive_is_checksum_pinned_before_execution(self) -> None:
+        ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        setup = (ROOT / ".github/actions/setup-apm/action.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertNotIn("microsoft/apm-action", ci)
+        self.assertEqual(ci.count("uses: ./.github/actions/setup-apm"), 2)
+        self.assertIn(
+            'APM_LINUX_X64_SHA256: "53c98c50f436a8b5ac1d6a3cf443f94d29ed1e5385af52859cf1b1b512f71578"',
+            ci,
+        )
+        self.assertLess(setup.index("sha256sum"), setup.index("tar -xzf"))
+        self.assertLess(setup.index("tar -xzf"), setup.index('"$binary_dir/apm" --version'))
+        self.assertNotIn("install -m", setup)
+
+    def test_runtime_target_profiles_match_workflow_and_readme(self) -> None:
+        ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+        for name, targets in validate_consumer.TARGET_PROFILES.items():
+            target_list = ",".join(targets)
+            self.assertIn(f"- name: {name}\n", ci)
+            self.assertIn(f"target: {target_list}\n", ci)
+            self.assertIn(f"--target {target_list}", readme)
 
     def test_apm_cli_version_surfaces_match(self) -> None:
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")

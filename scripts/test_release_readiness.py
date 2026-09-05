@@ -101,6 +101,24 @@ class ReleaseReadinessTests(unittest.TestCase):
                 any("install command version 0.2.0 != 0.1.0" in error for error in errors)
             )
 
+    def test_missing_changelog_returns_structured_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for relative in (
+                "apm.yml",
+                "README.md",
+                ".github/ISSUE_TEMPLATE/bug_report.md",
+            ):
+                destination = root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(ROOT / relative, destination)
+
+            version, errors = release_readiness.validate_versions(root)
+
+            self.assertEqual(version, "0.1.0")
+            self.assertTrue(errors)
+            self.assertTrue(all("CHANGELOG.md" in error for error in errors))
+
     def test_historical_release_links_do_not_break_current_version(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

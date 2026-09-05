@@ -89,6 +89,37 @@ class CommandRunnerTests(unittest.TestCase):
                     label="slow command",
                 )
 
+    def test_output_is_disk_buffered_and_tail_bounded(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            result = command_runner.run_command(
+                [
+                    "python3",
+                    "-c",
+                    "import sys; sys.stderr.write('prefix-' + 'x' * 100)",
+                ],
+                cwd=Path(directory),
+                timeout=30,
+                label="bounded output",
+                capture_limit=16,
+            )
+
+        self.assertEqual(
+            result.stderr,
+            "[... 91 bytes truncated ...]\n" + "x" * 16,
+        )
+
+    def test_environment_is_forwarded_without_appearing_in_label(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            result = command_runner.run_command(
+                ["python3", "-c", "import os; print(os.environ['TEST_VALUE'])"],
+                cwd=Path(directory),
+                timeout=30,
+                label="environment probe",
+                env={"TEST_VALUE": "available"},
+            )
+
+        self.assertEqual(result.stdout, "available")
+
     def test_run_git_returns_stripped_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             version = command_runner.run_git(

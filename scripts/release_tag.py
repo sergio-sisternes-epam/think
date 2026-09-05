@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,19 +29,41 @@ class ReleaseTag:
     main_revision: str
 
 
-def git(*args: str, root: Path = ROOT) -> str:
+def git_auth_environment(token: str | None) -> dict[str, str] | None:
+    if not token:
+        return None
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "http.https://github.com/.extraheader",
+            "GIT_CONFIG_VALUE_0": f"AUTHORIZATION: bearer {token}",
+        }
+    )
+    return environment
+
+
+def git(
+    *args: str,
+    root: Path = ROOT,
+    token: str | None = None,
+) -> str:
     try:
         return run_git(
             *args,
             cwd=root,
             timeout=GIT_TIMEOUT_SECONDS,
+            env=git_auth_environment(token),
         )
     except CommandError as error:
         raise ReleaseTagError(str(error)) from error
 
 
 def verify_remote_tag(
-    tag: str, root: Path = ROOT, remote: str = "origin"
+    tag: str,
+    root: Path = ROOT,
+    remote: str = "origin",
+    token: str | None = None,
 ) -> ReleaseTag:
     remote_ref = f"refs/tags/{tag}"
     tag_ref = f"refs/release-tags/{tag}"
@@ -54,6 +77,7 @@ def verify_remote_tag(
         f"{remote_ref}:{tag_ref}",
         "+refs/heads/main:refs/remotes/origin/main",
         root=root,
+        token=token,
     )
     object_type = git("cat-file", "-t", tag_ref, root=root)
     if object_type != "tag":
@@ -84,7 +108,7 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
     args = parser.parse_args(argv)
 
     try:
-        verified = verify_remote_tag(args.tag, root)
+        verified = verify_remote_tag(args.tag, root, token=os.environ.get("GITHUB_TOKEN"))
     except ReleaseTagError as error:
         emit_error(
             f"release tag verification failed: {error}",

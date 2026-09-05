@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 import validate_consumer
+from command_runner import CommandError
 
 
 class ValidateConsumerTests(unittest.TestCase):
@@ -75,6 +76,46 @@ class ValidateConsumerTests(unittest.TestCase):
                 "expected deployed skills directory is missing",
             ):
                 validate_consumer.validate_deployment(consumer, "agent-skills")
+
+    def test_run_surfaces_successful_stderr_diagnostics(self) -> None:
+        result = __import__("subprocess").CompletedProcess(
+            ["apm", "install"],
+            0,
+            stdout="",
+            stderr="[!] credential fallback",
+        )
+        stderr = StringIO()
+        stdout = StringIO()
+
+        with mock.patch("validate_consumer.run_command", return_value=result):
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                validate_consumer.run(
+                    "apm",
+                    "install",
+                    cwd=Path("."),
+                    phase="initial-install",
+                )
+
+        self.assertIn("consumer_phase=initial-install:pass", stdout.getvalue())
+        self.assertIn("[!] credential fallback", stderr.getvalue())
+
+    def test_run_emits_terminal_failure_state(self) -> None:
+        stdout = StringIO()
+
+        with mock.patch(
+            "validate_consumer.run_command",
+            side_effect=CommandError("install failed"),
+        ):
+            with redirect_stdout(stdout):
+                with self.assertRaisesRegex(RuntimeError, "install failed"):
+                    validate_consumer.run(
+                        "apm",
+                        "install",
+                        cwd=Path("."),
+                        phase="initial-install",
+                    )
+
+        self.assertIn("consumer_phase=initial-install:fail", stdout.getvalue())
 
     def test_skill_mismatch_reports_expected_and_actual(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

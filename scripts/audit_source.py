@@ -40,6 +40,7 @@ def tracked_files(root: Path = ROOT) -> list[str]:
             cwd=root,
             timeout=GIT_TIMEOUT_SECONDS,
             strip=False,
+            capture_limit=None,
         )
     except CommandError as error:
         raise SourceAuditError(str(error)) from error
