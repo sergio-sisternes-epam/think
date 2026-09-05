@@ -95,7 +95,7 @@ class SourceContractTests(unittest.TestCase):
         )
         self.assertIn("consumer:\n    name:", ci)
         self.assertIn("needs: metadata", ci)
-        self.assertGreaterEqual((ci + release).count("persist-credentials: false"), 5)
+        self.assertGreaterEqual((ci + release).count("persist-credentials: false"), 6)
         self.assertIn("GITHUB_TOKEN: ${{ github.token }}", release)
         self.assertIn("python3 scripts/release_notes.py", release)
         self.assertIn('--notes "$release_notes"', release)

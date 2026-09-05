@@ -258,6 +258,22 @@ class ReleaseReadinessTests(unittest.TestCase):
             ],
         )
 
+    def test_current_main_fetch_receives_ephemeral_auth(self) -> None:
+        with mock.patch.object(
+            release_readiness,
+            "run_git",
+            side_effect=["", "a" * 40],
+        ) as run_git:
+            revision = release_readiness.current_main_revision(
+                ROOT,
+                token="secret",
+            )
+
+        self.assertEqual(revision, "a" * 40)
+        self.assertIn("AUTHORIZATION: basic", run_git.call_args_list[0].kwargs["env"][
+            "GIT_CONFIG_VALUE_0"
+        ])
+
     def test_require_current_main_uses_real_detached_checkout(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

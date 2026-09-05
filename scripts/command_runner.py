@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import base64
+import os
 import subprocess
 import tempfile
 from collections.abc import Mapping, Sequence
@@ -14,6 +16,23 @@ MAX_CAPTURE_BYTES = 65536
 
 class CommandError(RuntimeError):
     """Raised when an external command fails or exceeds its time limit."""
+
+
+def github_git_auth_environment(token: str | None) -> dict[str, str] | None:
+    if not token:
+        return None
+    credential = base64.b64encode(
+        f"x-access-token:{token}".encode("utf-8")
+    ).decode("ascii")
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "http.https://github.com/.extraheader",
+            "GIT_CONFIG_VALUE_0": f"AUTHORIZATION: basic {credential}",
+        }
+    )
+    return environment
 
 
 def _output_text(

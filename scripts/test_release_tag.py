@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import subprocess
 import sys
 import tempfile
@@ -113,7 +114,8 @@ class ReleaseTagTests(unittest.TestCase):
         )
         self.assertEqual(
             environment["GIT_CONFIG_VALUE_0"],
-            "AUTHORIZATION: bearer secret",
+            "AUTHORIZATION: basic "
+            + base64.b64encode(b"x-access-token:secret").decode("ascii"),
         )
 
     def test_tag_not_on_current_main_is_rejected(self) -> None:

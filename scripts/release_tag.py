@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ci_output import emit_error, print_summary, write_github_outputs
-from command_runner import CommandError, run_git
+from command_runner import CommandError, github_git_auth_environment, run_git
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,20 +29,6 @@ class ReleaseTag:
     main_revision: str
 
 
-def git_auth_environment(token: str | None) -> dict[str, str] | None:
-    if not token:
-        return None
-    environment = os.environ.copy()
-    environment.update(
-        {
-            "GIT_CONFIG_COUNT": "1",
-            "GIT_CONFIG_KEY_0": "http.https://github.com/.extraheader",
-            "GIT_CONFIG_VALUE_0": f"AUTHORIZATION: bearer {token}",
-        }
-    )
-    return environment
-
-
 def git(
     *args: str,
     root: Path = ROOT,
@@ -53,7 +39,7 @@ def git(
             *args,
             cwd=root,
             timeout=GIT_TIMEOUT_SECONDS,
-            env=git_auth_environment(token),
+            env=github_git_auth_environment(token),
         )
     except CommandError as error:
         raise ReleaseTagError(str(error)) from error

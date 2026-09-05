@@ -34,6 +34,11 @@ generated release notes.
 apm install sergio-sisternes-epam/think#v0.1.0 --target agent-skills
 ```
 
+This shared target covers Agent Skills, Codex, Copilot, Cursor, Gemini,
+OpenCode, and Windsurf. Claude, Grok Build, and Kiro use native roots; use the
+full target command in [Compatibility](#compatibility) when installing for
+those runtimes.
+
 Or from a local clone:
 
 ```bash

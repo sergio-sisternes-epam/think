@@ -4,12 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from ci_output import emit_error, print_summary, write_github_outputs
-from command_runner import run_git
+from command_runner import github_git_auth_environment, run_git
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -139,11 +140,16 @@ def validate_versions(root: Path = ROOT) -> tuple[str | None, list[str]]:
     return expected, errors
 
 
-def git(*args: str, root: Path = ROOT) -> str:
+def git(
+    *args: str,
+    root: Path = ROOT,
+    token: str | None = None,
+) -> str:
     return run_git(
         *args,
         cwd=root,
         timeout=GIT_TIMEOUT_SECONDS,
+        env=github_git_auth_environment(token),
     )
 
 
@@ -151,13 +157,18 @@ def current_commit(root: Path = ROOT) -> str:
     return git("rev-parse", "HEAD", root=root)
 
 
-def current_main_revision(root: Path = ROOT, remote: str = "origin") -> str:
+def current_main_revision(
+    root: Path = ROOT,
+    remote: str = "origin",
+    token: str | None = None,
+) -> str:
     git(
         "fetch",
         "--no-tags",
         remote,
         "+refs/heads/main:refs/remotes/origin/main",
         root=root,
+        token=token,
     )
     return git("rev-parse", "refs/remotes/origin/main", root=root)
 
@@ -175,9 +186,10 @@ def validate_commit(candidate: str, root: Path = ROOT) -> list[str]:
 def validate_current_main(
     candidate: str,
     root: Path = ROOT,
+    token: str | None = None,
 ) -> tuple[str | None, list[str]]:
     try:
-        main_revision = current_main_revision(root)
+        main_revision = current_main_revision(root, token=token)
     except RuntimeError as error:
         return None, [str(error)]
     if candidate.lower() != main_revision.lower():
@@ -246,7 +258,11 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
     main_revision = None
     main_errors: list[str] = []
     if args.require_current_main and not commit_errors:
-        main_revision, main_errors = validate_current_main(args.commit, root)
+        main_revision, main_errors = validate_current_main(
+            args.commit,
+            root,
+            token=os.environ.get("GITHUB_TOKEN"),
+        )
     errors = version_errors + tag_errors + commit_errors + main_errors
     candidate_revision = args.commit or current_commit(root)
 

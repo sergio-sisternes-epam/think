@@ -154,6 +154,7 @@ jobs:
         if: needs.metadata.result == 'success'
         with:
           ref: ${{ inputs.candidate_revision || github.sha }}
+          persist-credentials: false
       - name: Verify exact current main
         id: exact-main
         if: >-
@@ -162,6 +163,7 @@ jobs:
           github.ref_type != 'tag'
         env:
           CANDIDATE_REVISION: ${{ inputs.candidate_revision || github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           python3 scripts/release_readiness.py \
            --commit "$CANDIDATE_REVISION" \

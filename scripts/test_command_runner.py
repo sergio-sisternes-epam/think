@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import subprocess
 import tempfile
 import unittest
@@ -10,6 +11,16 @@ import command_runner
 
 
 class CommandRunnerTests(unittest.TestCase):
+    def test_github_auth_uses_basic_x_access_token(self) -> None:
+        environment = command_runner.github_git_auth_environment("secret")
+
+        self.assertIsNotNone(environment)
+        encoded = base64.b64encode(b"x-access-token:secret").decode("ascii")
+        self.assertEqual(
+            environment["GIT_CONFIG_VALUE_0"],
+            f"AUTHORIZATION: basic {encoded}",
+        )
+
     def test_success_returns_captured_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             result = command_runner.run_command(
