@@ -7,26 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-09-05
+## [0.1.0]
 
 Prepared for the separately approved first tag and GitHub Release. The links
 below resolve after `v0.1.0` is published.
 
 ### Added
 
-- Install one package to use three thinking skills consistently across nine
+- Capture ideas with `think-ramble`, interrogate assumptions with
+  `think-grill`, and challenge claims with sources using `think-challenge`.
+- Install one package to use all three thinking modes consistently across nine
   agent harnesses.
-- Reproduce the reviewed release exactly through immutable source tags and
-  consumer-owned frozen locks.
-- Added the `think-ramble`, `think-grill`, and `think-challenge` APM skills.
+- Start quickly with copyable prompts for each thinking mode.
 - Added the Apache-2.0 licence text.
-- Added deterministic source audits, disposable multi-runtime consumer installs,
-  and frozen consumer-lock replay.
-- Added exact-main release readiness and immutable annotated-tag verification.
-- Added canonical repository metadata for the dependency-free APM source
-  package.
-- Normalised the manifest description to printable ASCII.
-- Documented the supported target set and first-release operating procedure.
+- Reproduce the reviewed release exactly through immutable source tags and
+  consumer-owned frozen locks, backed by deterministic audits and disposable
+  multi-runtime installs.
+- Documented canonical package metadata, supported targets, and the
+  first-release operating procedure.
 
 [Unreleased]: https://github.com/sergio-sisternes-epam/think/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/sergio-sisternes-epam/think/releases/tag/v0.1.0

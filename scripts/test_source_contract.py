@@ -91,9 +91,10 @@ class SourceContractTests(unittest.TestCase):
         )
         self.assertIn("workflow_dispatch:\n    inputs:\n      candidate_revision:", ci)
         self.assertIn(
-            '[ -n "$PACKAGE_SOURCE" ] && [ -z "$CANDIDATE_REVISION" ]',
+            '[[ "$PACKAGE_SOURCE" == *"#"* ]]',
             ci,
         )
+        self.assertGreaterEqual(ci.count("persist-credentials: false"), 3)
         self.assertIn("python3 scripts/release_notes.py", release)
         self.assertIn('--notes "$release_notes"', release)
 

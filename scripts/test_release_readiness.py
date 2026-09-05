@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from unittest import mock
 from pathlib import Path
@@ -167,7 +167,7 @@ class ReleaseReadinessTests(unittest.TestCase):
 
         self.assertEqual(
             output.getvalue().splitlines(),
-            ["error: bad%value", "next", "::error::bad%25value%0Anext"],
+            ["error: bad%value", "next", "::error::bad%25value next"],
         )
 
     def test_cli_writes_stable_github_outputs(self) -> None:
@@ -256,11 +256,16 @@ class ReleaseReadinessTests(unittest.TestCase):
             self.git(source, "commit", "-m", "Advance main")
             self.git(source, "push", "origin", "main")
 
-            status = release_readiness.main(
-                ["--commit", commit, "--require-current-main"],
-                checkout,
-            )
+            stdout = StringIO()
+            stderr = StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                status = release_readiness.main(
+                    ["--commit", commit, "--require-current-main"],
+                    checkout,
+                )
             self.assertEqual(status, 1)
+            self.assertIn("current_main_consistency=blocked", stdout.getvalue())
+            self.assertIn("!= exact current main", stderr.getvalue())
 
 
 if __name__ == "__main__":

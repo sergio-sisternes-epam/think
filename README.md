@@ -1,6 +1,7 @@
 # think
 
-> Three thinking skills across nine agent harnesses: ramble, grill, and challenge.
+> One install gives nine agent harnesses three ways to think: capture ideas,
+> interrogate assumptions, and challenge claims with sources.
 
 Install this repo as a single package. Skills live under `.apm/skills/`. There is no marketplace index and no Atlas store.
 
@@ -15,6 +16,9 @@ Install this repo as a single package. Skills live under `.apm/skills/`. There i
 Conversation-only use works when no durable store is present. If Atlas (or another store) is available, skills may optionally query or remember through it.
 
 ## Install
+
+Install [APM](https://github.com/microsoft/apm) 0.29.0 or later, then install
+Think.
 
 The repository is private. Remote consumers need an APM-supported Git
 credential authorised to read its contents; request repository access from the
@@ -33,6 +37,12 @@ Or from a local clone:
 ```bash
 apm install /path/to/think --target agent-skills
 ```
+
+Try one of these prompts after installation:
+
+- `Ramble with me about a new product idea.`
+- `Grill me on the assumptions behind this plan.`
+- `Challenge this claim with evidence: ...`
 
 ## Compatibility
 

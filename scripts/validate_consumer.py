@@ -67,7 +67,7 @@ def run(
     phase: str,
     timeout: int = COMMAND_TIMEOUT_SECONDS,
 ) -> None:
-    print(f"consumer_phase={phase}:start")
+    print(f"consumer_phase={phase}:start", flush=True)
     try:
         run_command(
             list(args),
@@ -77,7 +77,7 @@ def run(
         )
     except CommandError as error:
         raise RuntimeError(str(error)) from error
-    print(f"consumer_phase={phase}:pass")
+    print(f"consumer_phase={phase}:pass", flush=True)
 
 
 def digest(path: Path) -> str:
@@ -135,21 +135,24 @@ def validate_lock(
         if expected not in content:
             raise RuntimeError(f"{lock}: missing source provenance '{expected}'")
 
+    deployed_hashes = dict(
+        re.findall(
+            r"(?m)^\s+(\S.*?):\s+sha256:([0-9a-f]{64})\s*$",
+            content,
+        )
+    )
     for root in expected_skill_roots(consumer, target):
         for skill in contract.skills:
             skill_file = root / skill / "SKILL.md"
             relative = skill_file.relative_to(consumer).as_posix()
-            match = re.search(
-                rf"(?m)^\s+{re.escape(relative)}:\s+sha256:([0-9a-f]{{64}})\s*$",
-                content,
-            )
-            if not match:
+            expected_hash = deployed_hashes.get(relative)
+            if expected_hash is None:
                 raise RuntimeError(f"{lock}: missing deployed hash for {relative}")
             actual = hashlib.sha256(skill_file.read_bytes()).hexdigest()
-            if match.group(1) != actual:
+            if expected_hash != actual:
                 raise RuntimeError(
                     f"{lock}: deployed hash mismatch for {relative}: "
-                    f"{match.group(1)} != {actual}"
+                    f"{expected_hash} != {actual}"
                 )
 
 

@@ -47,6 +47,18 @@ class CiOutputTests(unittest.TestCase):
 
         self.assertIn("::error title=a%3Ab%2Cc::message", stderr.getvalue())
 
+    def test_annotation_is_single_line_and_bounded(self) -> None:
+        stderr = StringIO()
+        message = f"first line\n{'x' * 2000}"
+
+        with mock.patch.dict("os.environ", {"GITHUB_ACTIONS": "true"}):
+            with redirect_stderr(stderr):
+                ci_output.emit_error(message, title="failure")
+
+        annotation = stderr.getvalue().split("::error", 1)[1]
+        self.assertNotIn("%0A", annotation)
+        self.assertLessEqual(len(annotation), 1100)
+
 
 if __name__ == "__main__":
     unittest.main()

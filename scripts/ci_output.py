@@ -13,6 +13,7 @@ from typing import TextIO
 
 
 OUTPUT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]*$")
+MAX_ANNOTATION_LENGTH = 1024
 
 
 def _escape_data(value: str) -> str:
@@ -41,7 +42,10 @@ def emit_error(
     if file:
         properties.append(f"file={_escape_property(file)}")
     suffix = f" {','.join(properties)}" if properties else ""
-    print(f"::error{suffix}::{_escape_data(message)}", file=destination)
+    annotation = " ".join(message.splitlines())
+    if len(annotation) > MAX_ANNOTATION_LENGTH:
+        annotation = f"{annotation[: MAX_ANNOTATION_LENGTH - 3]}..."
+    print(f"::error{suffix}::{_escape_data(annotation)}", file=destination)
 
 
 def write_github_outputs(path: Path | None, values: Mapping[str, object]) -> None:

@@ -63,6 +63,7 @@ def run_git(
     *args: str,
     cwd: Path,
     timeout: int,
+    strip: bool = True,
 ) -> str:
     result = run_command(
         ["git", *args],
@@ -70,4 +71,4 @@ def run_git(
         timeout=timeout,
         label=f"git {' '.join(args)}",
     )
-    return result.stdout.strip()
+    return result.stdout.strip() if strip else result.stdout

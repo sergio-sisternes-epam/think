@@ -85,14 +85,16 @@ or a compatibility-breaking skill contract.
    GitHub Release with curated CHANGELOG content followed by generated notes.
 
 Never move, overwrite, delete, or reuse a pushed release tag. If validation
-fails before a GitHub Release is created, fix `main`, increment the version,
-repeat readiness, and use a new tag. If only Release creation fails because of
-a provider outage or permission problem, rerun the failed workflow for the same
-tag.
+finds a candidate defect, fix `main`, increment the version, repeat readiness,
+and use a new tag. If validation or Release creation fails only because of a
+transient provider, network, or permission problem, rerun the failed workflow
+for the unchanged tag.
 
 The workflow uses only the repository `GITHUB_TOKEN`: read-only during
-validation and `contents: write` only in the Release creation job. No custom
-secret is required because Think has no private package dependency.
+validation and `contents: write` only in the Release creation job. That
+repository-scoped token can read private Think content during same-repository
+tag validation. No custom secret is required because Think has no
+cross-repository private package dependency.
 Reusable CI remains read-only and cannot elevate permissions beyond its
 caller's token context.
 GitHub grants permissions per job, so the final read-only tag reverification

@@ -17,6 +17,7 @@ from command_runner import CommandError, run_command, run_git
 ROOT = Path(__file__).resolve().parents[1]
 GIT_TIMEOUT_SECONDS = 120
 AUDIT_TIMEOUT_SECONDS = 300
+AUDIT_DEADLINE_SECONDS = 720
 
 
 class SourceAuditError(RuntimeError):
@@ -38,6 +39,7 @@ def tracked_files(root: Path = ROOT) -> list[str]:
             "-z",
             cwd=root,
             timeout=GIT_TIMEOUT_SECONDS,
+            strip=False,
         )
     except CommandError as error:
         raise SourceAuditError(str(error)) from error
@@ -78,6 +80,13 @@ def audit_file(
         part.strip() for part in (result.stdout, result.stderr) if part.strip()
     )
     return AuditResult(path, result.returncode, output)
+
+
+def bounded_audit_timeout(file_count: int, max_workers: int) -> int:
+    if file_count < 1:
+        return AUDIT_TIMEOUT_SECONDS
+    waves = (file_count + max_workers - 1) // max_workers
+    return min(AUDIT_TIMEOUT_SECONDS, max(1, AUDIT_DEADLINE_SECONDS // waves))
 
 
 def report_results(
@@ -138,8 +147,12 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    worker = partial(audit_file, root=ROOT)
     max_workers = min(args.jobs, len(files)) if files else 1
+    worker = partial(
+        audit_file,
+        root=ROOT,
+        timeout=bounded_audit_timeout(len(files), max_workers),
+    )
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         results = list(executor.map(worker, files))
     return report_results(results, args.github_output)

@@ -32,6 +32,16 @@ class AuditSourceTests(unittest.TestCase):
 
             self.assertEqual(audit_source.tracked_files(root), ["tracked.txt"])
 
+    def test_tracked_files_preserves_leading_whitespace(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.git(root, "init", "--quiet")
+            path = " leading-space.txt"
+            (root / path).write_text("tracked\n", encoding="utf-8")
+            self.git(root, "add", path)
+
+            self.assertEqual(audit_source.tracked_files(root), [path])
+
     @unittest.skipUnless(hasattr(os, "symlink"), "symlinks are unavailable")
     def test_tracked_symlink_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -76,6 +86,11 @@ class AuditSourceTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 124)
         self.assertIn("timed out after 5s", result.output)
+
+    def test_audit_timeout_fits_global_deadline(self) -> None:
+        timeout = audit_source.bounded_audit_timeout(35, 8)
+
+        self.assertLessEqual(((35 + 8 - 1) // 8) * timeout, 720)
 
     def test_mixed_results_emit_diagnostic_annotation_and_fail(self) -> None:
         stdout = StringIO()

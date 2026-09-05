@@ -13,7 +13,8 @@ from release_readiness import ROOT, SEMVER
 def release_notes(version: str, root: Path = ROOT) -> str:
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
     match = re.search(
-        rf"(?ms)^## \[{re.escape(version)}\] - [0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}\s*"
+        rf"(?ms)^## \[{re.escape(version)}\]"
+        rf"(?: - [0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}})?\s*"
         rf"(?P<body>.*?)(?=^## \[|^\[[^\]]+\]:|\Z)",
         changelog,
     )

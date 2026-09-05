@@ -99,6 +99,24 @@ class CommandRunnerTests(unittest.TestCase):
 
         self.assertRegex(version, r"^git version \S+$")
 
+    def test_run_git_can_preserve_record_whitespace(self) -> None:
+        result = subprocess.CompletedProcess(
+            ["git", "ls-files", "-z"],
+            0,
+            stdout=" leading.txt\0",
+            stderr="",
+        )
+        with mock.patch("command_runner.run_command", return_value=result):
+            output = command_runner.run_git(
+                "ls-files",
+                "-z",
+                cwd=Path("."),
+                timeout=30,
+                strip=False,
+            )
+
+        self.assertEqual(output, " leading.txt\0")
+
 
 if __name__ == "__main__":
     unittest.main()
