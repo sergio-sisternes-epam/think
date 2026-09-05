@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ci_output import emit_error, print_summary, write_github_outputs
-from command_runner import run_command
+from command_runner import run_git
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -132,13 +132,11 @@ def validate_versions(root: Path = ROOT) -> tuple[str | None, list[str]]:
 
 
 def git(*args: str, root: Path = ROOT) -> str:
-    result = run_command(
-        ["git", *args],
+    return run_git(
+        *args,
         cwd=root,
         timeout=GIT_TIMEOUT_SECONDS,
-        label=f"git {' '.join(args)}",
     )
-    return result.stdout.strip()
 
 
 def current_commit(root: Path = ROOT) -> str:

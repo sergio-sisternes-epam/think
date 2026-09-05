@@ -68,6 +68,8 @@ jobs:
 
   validation:
     needs: candidate
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci.yml
     with:
       candidate_revision: ${{ needs.candidate.outputs.candidate_revision }}
@@ -79,7 +81,7 @@ jobs:
       - validation
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # GitHub grants permissions per job, so read-only reverification also sees this token.
+    # Job-scoped write also covers reverification; keeping both steps together closes TOCTOU.
     permissions:
       contents: write
     steps:

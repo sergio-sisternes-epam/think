@@ -77,7 +77,8 @@ class SourceContractTests(unittest.TestCase):
         )
         self.assertNotIn("APM_READ_TOKEN", ci + release)
         self.assertNotIn("secrets: inherit", ci + release)
-        self.assertIn("run: python3 scripts/audit_source.py", ci)
+        self.assertIn("python3 scripts/audit_source.py", ci)
+        self.assertIn("--jobs 8", ci)
 
     def test_skills_only_package_does_not_use_compile_gate(self) -> None:
         workflows = "\n".join(

@@ -195,7 +195,7 @@ def main(argv: list[str] | None = None) -> int:
             "consumer_validation": "failed",
         }
         write_github_outputs(args.github_output, fields)
-        print("consumer_validation=failed")
+        print_summary(fields)
         return 1
 
     fields = {

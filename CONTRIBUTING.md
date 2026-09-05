@@ -57,6 +57,8 @@ python3 scripts/validate_consumer.py \
 
 CI always exercises both target sets with the same repository-owned validator,
 so ordinary skill-prose edits do not need to repeat the full matrix locally.
+`--no-policy` keeps this check package-local; organisation policy enforcement
+is a separate repository or enterprise control.
 
 `apm compile` is not a validation gate for Think because this package contains
 skills rather than `.apm/instructions/`. `apm pack` is also not a release gate:
@@ -69,8 +71,8 @@ Think follows semantic versioning. While the package remains below `1.0.0`, use
 a patch increment for compatible fixes and a minor increment for new capability
 or a compatibility-breaking skill contract.
 
-1. Update `apm.yml`, the README install command, the bug-report version example,
-   and `CHANGELOG.md`.
+1. Update `apm.yml`, both README install commands, the bug-report version
+   example, and `CHANGELOG.md`.
 2. Merge the reviewed change through the protected `main` branch.
 3. Run **Think CI** manually against the exact `main` commit intended for
    release. Its final job must report
@@ -93,6 +95,9 @@ validation and `contents: write` only in the Release creation job. No custom
 secret is required because Think has no private package dependency.
 Reusable CI remains read-only and cannot elevate permissions beyond its
 caller's token context.
+GitHub grants permissions per job, so the final read-only tag reverification
+shares the Release job's `contents: write` token. Keeping reverification and
+creation adjacent avoids reopening the validation-to-publication race.
 
 ## Repository protection
 

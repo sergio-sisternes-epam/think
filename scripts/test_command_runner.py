@@ -51,6 +51,16 @@ class CommandRunnerTests(unittest.TestCase):
                     label="slow command",
                 )
 
+    def test_run_git_returns_stripped_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            version = command_runner.run_git(
+                "--version",
+                cwd=Path(directory),
+                timeout=30,
+            )
+
+        self.assertRegex(version, r"^git version \S+$")
+
 
 if __name__ == "__main__":
     unittest.main()

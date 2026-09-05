@@ -135,6 +135,28 @@ class ReleaseReadinessTests(unittest.TestCase):
                 },
             )
 
+    def test_cli_writes_tag_and_commit_consistency_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output_path = Path(directory) / "github-output"
+            commit = release_readiness.current_commit(ROOT)
+
+            status = release_readiness.main(
+                [
+                    "--tag",
+                    "v0.1.0",
+                    "--commit",
+                    commit,
+                    "--github-output",
+                    str(output_path),
+                ],
+                ROOT,
+            )
+
+            outputs = self.read_outputs(output_path)
+            self.assertEqual(status, 0)
+            self.assertEqual(outputs["tag_consistency"], "pass")
+            self.assertEqual(outputs["commit_consistency"], "pass")
+
     def test_exact_current_main_mismatch_is_rejected(self) -> None:
         with mock.patch.object(
             release_readiness,

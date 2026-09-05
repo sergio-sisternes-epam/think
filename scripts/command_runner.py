@@ -37,3 +37,17 @@ def run_command(
         raise CommandError(
             f"{label} failed with exit code {error.returncode}{detail}"
         ) from error
+
+
+def run_git(
+    *args: str,
+    cwd: Path,
+    timeout: int,
+) -> str:
+    result = run_command(
+        ["git", *args],
+        cwd=cwd,
+        timeout=timeout,
+        label=f"git {' '.join(args)}",
+    )
+    return result.stdout.strip()

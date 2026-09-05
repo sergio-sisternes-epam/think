@@ -18,6 +18,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   APM_VERSION: "0.29.0"
 
@@ -68,7 +72,10 @@ jobs:
           apm-version: ${{ env.APM_VERSION }}
       - name: Audit tracked source files
         id: source-audit
-        run: python3 scripts/audit_source.py --github-output "$GITHUB_OUTPUT"
+        run: |
+          python3 scripts/audit_source.py \
+            --jobs 8 \
+            --github-output "$GITHUB_OUTPUT"
 
   consumer:
     name: Consumer install (${{ matrix.name }})

@@ -33,9 +33,6 @@ Or from a local clone:
 apm install /path/to/think --target agent-skills
 ```
 
-Think has no package dependencies, so its CI and release workflow require no
-custom PAT.
-
 ## Compatibility
 
 Think is validated with APM CLI 0.29.0 against the shared `agent-skills` target

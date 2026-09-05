@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ci_output import emit_error, print_summary, write_github_outputs
-from command_runner import CommandError, run_command
+from command_runner import CommandError, run_git
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,15 +30,13 @@ class ReleaseTag:
 
 def git(*args: str, root: Path = ROOT) -> str:
     try:
-        result = run_command(
-            ["git", *args],
+        return run_git(
+            *args,
             cwd=root,
             timeout=GIT_TIMEOUT_SECONDS,
-            label=f"git {' '.join(args)}",
         )
     except CommandError as error:
         raise ReleaseTagError(str(error)) from error
-    return result.stdout.strip()
 
 
 def verify_remote_tag(
@@ -49,7 +47,14 @@ def verify_remote_tag(
     git("check-ref-format", remote_ref, root=root)
     git("check-ref-format", tag_ref, root=root)
 
-    git("fetch", "--no-tags", remote, f"{remote_ref}:{tag_ref}", root=root)
+    git(
+        "fetch",
+        "--no-tags",
+        remote,
+        f"{remote_ref}:{tag_ref}",
+        "+refs/heads/main:refs/remotes/origin/main",
+        root=root,
+    )
     object_type = git("cat-file", "-t", tag_ref, root=root)
     if object_type != "tag":
         raise ReleaseTagError(
@@ -58,13 +63,6 @@ def verify_remote_tag(
 
     tag_object = git("rev-parse", tag_ref, root=root)
     candidate_revision = git("rev-parse", f"{tag_ref}^{{commit}}", root=root)
-    git(
-        "fetch",
-        "--no-tags",
-        remote,
-        "+refs/heads/main:refs/remotes/origin/main",
-        root=root,
-    )
     main_revision = git("rev-parse", "refs/remotes/origin/main", root=root)
     if candidate_revision != main_revision:
         raise ReleaseTagError(

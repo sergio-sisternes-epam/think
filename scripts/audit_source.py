@@ -11,7 +11,7 @@ from functools import partial
 from pathlib import Path
 
 from ci_output import emit_error, print_summary, write_github_outputs
-from command_runner import CommandError, run_command
+from command_runner import CommandError, run_command, run_git
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,18 +32,19 @@ class AuditResult:
 
 def tracked_files(root: Path = ROOT) -> list[str]:
     try:
-        result = run_command(
-            ["git", "ls-files", "--cached", "-z"],
+        tracked = run_git(
+            "ls-files",
+            "--cached",
+            "-z",
             cwd=root,
             timeout=GIT_TIMEOUT_SECONDS,
-            label="git source enumeration",
         )
     except CommandError as error:
         raise SourceAuditError(str(error)) from error
 
     root = root.resolve()
     files = []
-    for path in result.stdout.split("\0"):
+    for path in tracked.split("\0"):
         if not path:
             continue
         candidate = root / path

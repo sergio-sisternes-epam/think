@@ -47,6 +47,26 @@ class AuditSourceTests(unittest.TestCase):
             ):
                 audit_source.tracked_files(root)
 
+    @unittest.skipUnless(hasattr(os, "symlink"), "symlinks are unavailable")
+    def test_tracked_path_escaping_root_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "root"
+            outside = Path(directory) / "outside"
+            root.mkdir()
+            outside.mkdir()
+            (outside / "file.txt").write_text("outside\n", encoding="utf-8")
+            (root / "linked").symlink_to(outside, target_is_directory=True)
+
+            with mock.patch(
+                "audit_source.run_git",
+                return_value="linked/file.txt\0",
+            ):
+                with self.assertRaisesRegex(
+                    audit_source.SourceAuditError,
+                    "tracked path escapes the repository",
+                ):
+                    audit_source.tracked_files(root)
+
     def test_timeout_becomes_actionable_audit_failure(self) -> None:
         with mock.patch(
             "audit_source.run_command",
