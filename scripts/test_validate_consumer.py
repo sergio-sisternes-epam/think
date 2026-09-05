@@ -151,6 +151,7 @@ class ValidateConsumerTests(unittest.TestCase):
                 consumer,
                 target,
                 source,
+                "a" * 40,
             )
 
             lock = consumer / "apm.lock.yaml"
@@ -167,6 +168,24 @@ class ValidateConsumerTests(unittest.TestCase):
                     consumer,
                     target,
                     source,
+                    "a" * 40,
+                )
+
+    def test_remote_lock_must_match_expected_revision(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            consumer = Path(directory)
+            target = "agent-skills"
+            source = "sergio-sisternes-epam/think#v0.1.0"
+            self.deploy_skills(consumer, target)
+            self.write_valid_lock(consumer, target, source)
+
+            with self.assertRaisesRegex(RuntimeError, "!= expected"):
+                validate_consumer.validate_lock(
+                    consumer / "apm.lock.yaml",
+                    consumer,
+                    target,
+                    source,
+                    "b" * 40,
                 )
 
     def test_stable_targets_require_all_native_skill_roots(self) -> None:
@@ -304,7 +323,29 @@ class ValidateConsumerTests(unittest.TestCase):
             )
 
         self.assertEqual(status, 0)
-        validator.assert_called_once_with(source, "agent-skills")
+        validator.assert_called_once_with(source, "agent-skills", None)
+
+    def test_remote_source_and_expected_revision_are_forwarded(self) -> None:
+        source = "sergio-sisternes-epam/think#v0.1.0"
+        revision = "a" * 40
+        with mock.patch.object(
+            validate_consumer,
+            "validate_consumer",
+            return_value="a" * 64,
+        ) as validator:
+            status = validate_consumer.main(
+                [
+                    "--source",
+                    source,
+                    "--target",
+                    "agent-skills",
+                    "--expected-revision",
+                    revision,
+                ]
+            )
+
+        self.assertEqual(status, 0)
+        validator.assert_called_once_with(source, "agent-skills", revision)
 
 
 if __name__ == "__main__":

@@ -8,6 +8,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      candidate_revision:
+        description: Exact main commit to validate before tagging
+        required: false
+        type: string
+      package_source:
+        description: Optional immutable owner/repo#ref install source
+        required: false
+        type: string
   workflow_call:
     inputs:
       candidate_revision:
@@ -104,13 +113,15 @@ jobs:
       - name: Install and replay in a disposable consumer
         id: consumer-validation
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          EXPECTED_REVISION: ${{ inputs.candidate_revision }}
+          GITHUB_TOKEN: ${{ inputs.package_source != '' && github.token || '' }}
           PACKAGE_SOURCE: ${{ inputs.package_source || '.' }}
           TARGETS: ${{ matrix.target }}
         run: |
           python3 scripts/validate_consumer.py \
             --source "$PACKAGE_SOURCE" \
             --target "$TARGETS" \
+            --expected-revision "$EXPECTED_REVISION" \
             --github-output "$GITHUB_OUTPUT"
 
   readiness:
@@ -126,7 +137,6 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         if: needs.metadata.result == 'success'
         with:
-          fetch-depth: 0
           ref: ${{ inputs.candidate_revision || github.sha }}
       - name: Verify exact current main
         id: exact-main

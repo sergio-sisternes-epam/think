@@ -84,6 +84,12 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn("python3 scripts/audit_source.py", ci)
         self.assertIn("--jobs 8", ci)
         self.assertIn('--source "$PACKAGE_SOURCE"', ci)
+        self.assertIn('--expected-revision "$EXPECTED_REVISION"', ci)
+        self.assertIn(
+            "GITHUB_TOKEN: ${{ inputs.package_source != '' && github.token || '' }}",
+            ci,
+        )
+        self.assertIn("workflow_dispatch:\n    inputs:\n      candidate_revision:", ci)
         self.assertIn("python3 scripts/release_notes.py", release)
         self.assertIn('--notes "$release_notes"', release)
 

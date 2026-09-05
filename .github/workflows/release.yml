@@ -20,8 +20,6 @@ jobs:
       tag_object: ${{ steps.verify-tag.outputs.tag_object }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          fetch-depth: 0
       - name: Require a newly created tag event
         env:
           REF_CREATED: ${{ github.event.created }}
@@ -89,7 +87,6 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          fetch-depth: 0
           ref: ${{ needs.candidate.outputs.candidate_revision }}
       # This deliberate second remote fetch closes the validation-to-publication gap.
       - name: Reverify authoritative release tag

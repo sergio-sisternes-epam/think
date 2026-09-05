@@ -68,12 +68,12 @@ source-package layout.
 
 ## Releases
 
-Curated release notes are maintained in [CHANGELOG.md](./CHANGELOG.md); GitHub
-Release bodies use GitHub's generated pull-request notes. A release tag must be
-a newly created annotated `vX.Y.Z` tag on the exact current `main` commit. The
-tag workflow reruns source and consumer validation, then re-verifies the remote
-tag object immediately before creating the GitHub Release. Tags are never moved
-or reused.
+Curated release notes are maintained in [CHANGELOG.md](./CHANGELOG.md). GitHub
+Release bodies start with that curated version section and append GitHub's
+generated pull-request notes. A release tag must be a newly created annotated
+`vX.Y.Z` tag on the exact current `main` commit. The tag workflow reruns source
+and consumer validation, then re-verifies the remote tag object immediately
+before creating the GitHub Release. Tags are never moved or reused.
 
 ## Contributing
 

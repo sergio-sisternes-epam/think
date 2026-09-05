@@ -91,6 +91,7 @@ def validate_lock(
     consumer: Path,
     target: str,
     source: str,
+    expected_revision: str | None = None,
     package_root: Path = ROOT,
 ) -> None:
     if not lock.is_file():
@@ -119,8 +120,17 @@ def validate_lock(
             f"repo_url: {repo}",
             f"resolved_ref: {reference}",
         )
-        if not re.search(r"(?m)^\s+resolved_commit:\s+[0-9a-f]{40}\s*$", content):
+        commit_match = re.search(
+            r"(?m)^\s+resolved_commit:\s+([0-9a-f]{40})\s*$",
+            content,
+        )
+        if not commit_match:
             raise RuntimeError(f"{lock}: missing resolved commit for {source}")
+        if expected_revision and commit_match.group(1) != expected_revision:
+            raise RuntimeError(
+                f"{lock}: resolved commit {commit_match.group(1)} "
+                f"!= expected {expected_revision}"
+            )
     for expected in provenance:
         if expected not in content:
             raise RuntimeError(f"{lock}: missing source provenance '{expected}'")
@@ -213,6 +223,7 @@ def validate_consumer_in_directory(
     target: str,
     consumer: Path,
     runner: Callable[..., None] = run,
+    expected_revision: str | None = None,
     package_root: Path = ROOT,
 ) -> str:
     parse_targets(target)
@@ -230,7 +241,14 @@ def validate_consumer_in_directory(
     validate_deployment(consumer, target, package_root)
 
     lock = consumer / "apm.lock.yaml"
-    validate_lock(lock, consumer, target, source, package_root)
+    validate_lock(
+        lock,
+        consumer,
+        target,
+        source,
+        expected_revision,
+        package_root,
+    )
     before = digest(lock)
     runner(
         "apm",
@@ -260,9 +278,18 @@ def validate_consumer_in_directory(
     return after
 
 
-def validate_consumer(source: str, target: str) -> str:
+def validate_consumer(
+    source: str,
+    target: str,
+    expected_revision: str | None = None,
+) -> str:
     with tempfile.TemporaryDirectory(prefix="think-consumer-") as directory:
-        return validate_consumer_in_directory(source, target, Path(directory))
+        return validate_consumer_in_directory(
+            source,
+            target,
+            Path(directory),
+            expected_revision=expected_revision,
+        )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -274,17 +301,26 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--target", required=True, help="APM target list")
     parser.add_argument(
+        "--expected-revision",
+        help="Expected 40-character resolved commit for a remote source",
+    )
+    parser.add_argument(
         "--github-output",
         type=Path,
         help="Optional GitHub Actions output file",
     )
     args = parser.parse_args(argv)
+    if args.expected_revision and not re.fullmatch(
+        r"[0-9a-f]{40}",
+        args.expected_revision,
+    ):
+        parser.error("--expected-revision must be a full lowercase commit SHA")
 
     try:
         source = args.source
         if Path(source).exists():
             source = str(Path(source).resolve())
-        lock_hash = validate_consumer(source, args.target)
+        lock_hash = validate_consumer(source, args.target, args.expected_revision)
     except RuntimeError as error:
         emit_error(
             f"{args.target}: {error}",

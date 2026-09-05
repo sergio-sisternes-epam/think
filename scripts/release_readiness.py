@@ -49,7 +49,7 @@ SURFACES = (
     VersionSurface(
         "bug report example",
         ".github/ISSUE_TEMPLATE/bug_report.md",
-        rf"^- \*\*Package \(if applicable\):\*\* e\.g\. think-grill v({SEMVER})\s*$",
+        rf"^- \*\*Package version:\*\* e\.g\. think v({SEMVER})\s*$",
     ),
     VersionSurface(
         "changelog comparison base",

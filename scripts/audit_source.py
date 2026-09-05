@@ -126,13 +126,15 @@ def main(argv: list[str] | None = None) -> int:
         files = tracked_files()
     except SourceAuditError as error:
         emit_error(str(error), title="Source enumeration failed")
+        fields = {
+            "source_audit_files": 0,
+            "source_audit_failures": 1,
+            "source_audit": "failed",
+        }
+        print_summary(fields)
         write_github_outputs(
             args.github_output,
-            {
-                "source_audit_files": 0,
-                "source_audit_failures": 1,
-                "source_audit": "failed",
-            },
+            fields,
         )
         return 1
 
