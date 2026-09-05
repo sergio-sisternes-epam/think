@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem with a package or the marketplace
+about: Report a problem with the Think package
 title: ''
 labels: bug
 assignees: ''
@@ -22,8 +22,9 @@ What you expected to happen.
 ## Environment
 
 - **OS:** e.g. Ubuntu 22.04 / macOS 14
-- **APM CLI version:** e.g. 0.28.0
-- **Package (if applicable):** e.g. think-grill v0.1.0
+- **APM CLI version:** e.g. 0.29.0
+- **Package version:** e.g. think v0.1.0
+- **Target / harness:** e.g. agent-skills, copilot, cursor
 
 ## Additional context
 

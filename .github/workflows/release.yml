@@ -1,0 +1,143 @@
+name: Release Think
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    name: Verify release candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      candidate_revision: ${{ steps.verify-tag.outputs.candidate_revision }}
+      is_prerelease: ${{ steps.verify-metadata.outputs.is_prerelease }}
+      package_version: ${{ steps.verify-metadata.outputs.package_version }}
+      tag_object: ${{ steps.verify-tag.outputs.tag_object }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Require a newly created tag event
+        env:
+          REF_CREATED: ${{ github.event.created }}
+        run: |
+          if [ "$REF_CREATED" != true ]; then
+            echo "::error title=Immutable release tag::Release tags must be newly created, never updated."
+            exit 1
+          fi
+      - name: Verify authoritative immutable exact-main tag
+        id: verify-tag
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          python3 scripts/release_tag.py \
+            --tag "$TAG" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Verify release metadata
+        id: verify-metadata
+        env:
+          TAG: ${{ github.ref_name }}
+          TAG_COMMIT: ${{ steps.verify-tag.outputs.candidate_revision }}
+        run: |
+          python3 scripts/release_readiness.py \
+            --tag "$TAG" \
+            --commit "$TAG_COMMIT" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Record release candidate
+        env:
+          IS_PRERELEASE: ${{ steps.verify-metadata.outputs.is_prerelease }}
+          MAIN_COMMIT: ${{ steps.verify-tag.outputs.main_revision }}
+          TAG: ${{ github.ref_name }}
+          TAG_COMMIT: ${{ steps.verify-tag.outputs.candidate_revision }}
+          TAG_OBJECT: ${{ steps.verify-tag.outputs.tag_object }}
+          TAG_REF: ${{ steps.verify-tag.outputs.tag_ref }}
+        run: |
+          {
+            echo "tag=$TAG"
+            echo "authoritative_tag_ref=$TAG_REF"
+            echo "annotated_tag_object=$TAG_OBJECT"
+            echo "candidate_revision=$TAG_COMMIT"
+            echo "main_revision=$MAIN_COMMIT"
+            echo "is_prerelease=$IS_PRERELEASE"
+            echo "release_candidate_decision=ready-for-validation"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  validation:
+    needs: candidate
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+    with:
+      candidate_revision: ${{ needs.candidate.outputs.candidate_revision }}
+      package_source: sergio-sisternes-epam/think#${{ github.ref_name }}
+
+  release:
+    name: Create source release
+    needs:
+      - candidate
+      - validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Job-scoped write also covers reverification; keeping both steps together closes TOCTOU.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ needs.candidate.outputs.candidate_revision }}
+          persist-credentials: false
+      # This deliberate second remote fetch closes the validation-to-publication gap.
+      - name: Reverify authoritative release tag
+        id: reverify-tag
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          python3 scripts/release_tag.py \
+            --tag "$TAG" \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Create GitHub release
+        env:
+          EXPECTED_CANDIDATE: ${{ needs.candidate.outputs.candidate_revision }}
+          EXPECTED_TAG_OBJECT: ${{ needs.candidate.outputs.tag_object }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IS_PRERELEASE: ${{ needs.candidate.outputs.is_prerelease }}
+          REVERIFIED_CANDIDATE: ${{ steps.reverify-tag.outputs.candidate_revision }}
+          REVERIFIED_TAG_OBJECT: ${{ steps.reverify-tag.outputs.tag_object }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.candidate.outputs.package_version }}
+        run: |
+          set -euo pipefail
+          if [ "$REVERIFIED_TAG_OBJECT" != "$EXPECTED_TAG_OBJECT" ] ||
+            [ "$REVERIFIED_CANDIDATE" != "$EXPECTED_CANDIDATE" ]; then
+            echo "::error title=Release tag changed::The authoritative tag no longer matches the validated candidate."
+            exit 1
+          fi
+          gh auth status
+          repository="$(gh repo view --json nameWithOwner --jq .nameWithOwner)"
+          if [ "$repository" != "$GITHUB_REPOSITORY" ]; then
+            echo "::error title=Repository mismatch::gh resolved $repository instead of $GITHUB_REPOSITORY."
+            exit 1
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error title=Immutable release::A GitHub Release already exists for $TAG."
+            exit 1
+          fi
+          notes_file="$RUNNER_TEMP/release-notes.md"
+          python3 scripts/release_notes.py \
+            --version "$VERSION" \
+            --output "$notes_file"
+          release_notes="$(<"$notes_file")"
+          args=(release create "$TAG" --verify-tag --generate-notes --notes "$release_notes" --title "$TAG")
+          if [ "$IS_PRERELEASE" = true ]; then
+            args+=(--prerelease)
+          else
+            args+=(--latest)
+          fi
+          gh "${args[@]}"

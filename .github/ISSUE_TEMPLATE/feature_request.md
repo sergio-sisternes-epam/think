@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for a new package or improvement
+about: Suggest a new Think skill or improvement
 title: ''
 labels: enhancement
 assignees: ''
