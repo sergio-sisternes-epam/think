@@ -3,7 +3,6 @@
 > Harness-agnostic thinking primitives as one APM package: ramble, grill, and challenge.
 
 [![CI](https://github.com/sergio-sisternes-epam/think/actions/workflows/ci.yml/badge.svg)](https://github.com/sergio-sisternes-epam/think/actions/workflows/ci.yml)
-[![PR Validate](https://github.com/sergio-sisternes-epam/think/actions/workflows/pr-validate.yml/badge.svg)](https://github.com/sergio-sisternes-epam/think/actions/workflows/pr-validate.yml)
 
 Install this repo as a single package. Skills live under `.apm/skills/`. There is no marketplace index and no Atlas store.
 
@@ -20,14 +19,35 @@ Conversation-only use works when no durable store is present. If Atlas (or anoth
 ## Install
 
 ```bash
-apm install sergio-sisternes-epam/think#v0.1.0
+apm install sergio-sisternes-epam/think#v0.1.0 --target agent-skills
 ```
 
 Or from a local clone:
 
 ```bash
-apm install /path/to/think
+apm install /path/to/think --target agent-skills
 ```
+
+The repository is private. Remote consumers need GitHub Contents: read access
+through an APM-supported Git credential; request repository access from the
+[owner](https://github.com/sergio-sisternes-epam) before installing. Think has
+no package dependencies, so its CI and release workflow require no custom PAT.
+
+## Compatibility
+
+Think is validated with APM CLI 0.29.0 against the shared `agent-skills` target
+and the stable Claude, Codex, Copilot, Cursor, Gemini, Grok Build, Kiro,
+OpenCode, and Windsurf targets. A consumer install creates and owns its
+`apm.lock.yaml`; this dependency-free source package does not commit one.
+
+To exercise every stable runtime explicitly:
+
+```bash
+apm install sergio-sisternes-epam/think#v0.1.0 --target claude,codex,copilot,cursor,gemini,grok-build,kiro,opencode,windsurf
+```
+
+APM 0.29 deploys skills for these targets through the shared
+`.agents/skills/<skill>/SKILL.md` substrate.
 
 ## Layout
 
@@ -38,6 +58,19 @@ apm.yml
   think-grill/SKILL.md
   think-challenge/SKILL.md
 ```
+
+The package is distributed directly from immutable Git tags. `apm pack` builds
+dependency bundles and is not a release artefact for this dependency-free
+source-package layout.
+
+## Releases
+
+Curated release notes are maintained in [CHANGELOG.md](./CHANGELOG.md); GitHub
+Release bodies use GitHub's generated pull-request notes. A release tag must be
+a newly created annotated `vX.Y.Z` tag on the exact current `main` commit. The
+tag workflow reruns source and consumer validation, then re-verifies the remote
+tag object immediately before creating the GitHub Release. Tags are never moved
+or reused.
 
 ## Contributing
 
@@ -53,4 +86,4 @@ To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 
 ## Licence
 
-Apache-2.0 as declared in `apm.yml`.
+Apache-2.0. See [LICENSE](./LICENSE).

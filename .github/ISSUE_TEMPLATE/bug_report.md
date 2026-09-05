@@ -22,7 +22,7 @@ What you expected to happen.
 ## Environment
 
 - **OS:** e.g. Ubuntu 22.04 / macOS 14
-- **APM CLI version:** e.g. 0.28.0
+- **APM CLI version:** e.g. 0.29.0
 - **Package (if applicable):** e.g. think-grill v0.1.0
 
 ## Additional context

@@ -13,5 +13,8 @@ Fixes #
 
 ## Validation
 
-- [ ] `apm compile --dry-run --verbose` succeeds
+- [ ] `python3 -m unittest discover -s scripts -p 'test_*.py'` succeeds
+- [ ] Release metadata matches `apm.yml`
+- [ ] APM source audit succeeds
+- [ ] Disposable consumer installs and frozen replay succeed
 - [ ] CI checks pass
