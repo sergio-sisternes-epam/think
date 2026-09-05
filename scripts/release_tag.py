@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -88,6 +89,17 @@ def main() -> int:
         verified = verify_remote_tag(args.tag)
     except ReleaseTagError as error:
         print(f"release tag verification failed: {error}", file=sys.stderr)
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            diagnostic = str(error)
+            escaped = (
+                diagnostic.replace("%", "%25")
+                .replace("\r", "%0D")
+                .replace("\n", "%0A")
+            )
+            print(
+                f"::error title=Release tag verification failed::{escaped}",
+                file=sys.stderr,
+            )
         return 1
 
     fields = (

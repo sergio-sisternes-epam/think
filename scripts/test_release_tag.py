@@ -4,7 +4,10 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr
+from io import StringIO
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import release_tag
@@ -103,6 +106,25 @@ class ReleaseTagTests(unittest.TestCase):
                 f"peels to {tagged_commit}, not exact current main {main_commit}",
             ):
                 release_tag.verify_remote_tag("v0.1.0", checkout)
+
+    def test_cli_failure_emits_github_annotation(self) -> None:
+        stderr = StringIO()
+
+        with mock.patch.object(
+            release_tag,
+            "verify_remote_tag",
+            side_effect=release_tag.ReleaseTagError("missing%tag"),
+        ):
+            with mock.patch.dict("os.environ", {"GITHUB_ACTIONS": "true"}):
+                with mock.patch.object(sys, "argv", ["release_tag.py", "--tag", "v0.1.0"]):
+                    with redirect_stderr(stderr):
+                        status = release_tag.main()
+
+        self.assertEqual(status, 1)
+        self.assertIn(
+            "::error title=Release tag verification failed::missing%25tag",
+            stderr.getvalue(),
+        )
 
 
 if __name__ == "__main__":

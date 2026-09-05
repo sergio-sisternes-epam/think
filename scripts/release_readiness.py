@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 from dataclasses import dataclass
@@ -35,6 +36,13 @@ SURFACES = (
         "README.md",
         rf"^apm install sergio-sisternes-epam/think#v({SEMVER})"
         rf"\s+--target\s+agent-skills\s*$",
+    ),
+    VersionSurface(
+        "stable-runtime install command",
+        "README.md",
+        rf"^apm install sergio-sisternes-epam/think#v({SEMVER})"
+        rf"\s+--target\s+claude,codex,copilot,cursor,gemini,grok-build,"
+        rf"kiro,opencode,windsurf\s*$",
     ),
     VersionSurface(
         "bug report example",
@@ -136,6 +144,13 @@ def validate_tag(tag: str, version: str) -> list[str]:
     return [] if tag == expected else [f"release tag {tag} != {expected}"]
 
 
+def emit_error(error: str) -> None:
+    print(f"error: {error}")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        escaped = error.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::error::{escaped}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tag", help="Pushed release tag to compare with apm.yml")
@@ -150,7 +165,7 @@ def main() -> int:
         print("is_prerelease: unknown")
         print("version_consistency: blocked")
         for error in version_errors:
-            print(f"error: {error}")
+            emit_error(error)
         print("release_metadata_decision: blocked")
         return 1
 
@@ -170,7 +185,7 @@ def main() -> int:
 
     if errors:
         for error in errors:
-            print(f"error: {error}")
+            emit_error(error)
         print("release_metadata_decision: blocked")
         return 1
 

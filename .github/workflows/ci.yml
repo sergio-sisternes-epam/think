@@ -62,12 +62,7 @@ jobs:
           setup-only: true
           apm-version: ${{ env.APM_VERSION }}
       - name: Audit tracked source files
-        shell: bash
-        run: |
-          set -euo pipefail
-          while IFS= read -r -d '' file; do
-            apm audit --file "$file" --no-policy
-          done < <(git ls-files -z)
+        run: python3 scripts/audit_source.py
 
   consumer:
     name: Consumer install (${{ matrix.name }})

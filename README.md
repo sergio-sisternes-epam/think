@@ -2,8 +2,6 @@
 
 > Harness-agnostic thinking primitives as one APM package: ramble, grill, and challenge.
 
-[![CI](https://github.com/sergio-sisternes-epam/think/actions/workflows/ci.yml/badge.svg)](https://github.com/sergio-sisternes-epam/think/actions/workflows/ci.yml)
-
 Install this repo as a single package. Skills live under `.apm/skills/`. There is no marketplace index and no Atlas store.
 
 ## Skills

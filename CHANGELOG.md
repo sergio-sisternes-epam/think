@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added canonical repository metadata for the dependency-free APM source
   package.
+- Normalised the manifest description to printable ASCII.
 - Documented the supported target set and first-release operating procedure.
 
 [Unreleased]: https://github.com/sergio-sisternes-epam/think/compare/v0.1.0...HEAD

@@ -3,6 +3,9 @@ from __future__ import annotations
 import shutil
 import tempfile
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
+from unittest import mock
 from pathlib import Path
 
 import release_readiness
@@ -79,6 +82,18 @@ class ReleaseReadinessTests(unittest.TestCase):
             ["release tag v0.2.0 != v0.1.0"],
         )
         self.assertTrue(release_readiness.is_prerelease("0.2.0-rc.1"))
+
+    def test_errors_are_annotated_in_github_actions(self) -> None:
+        output = StringIO()
+
+        with mock.patch.dict("os.environ", {"GITHUB_ACTIONS": "true"}):
+            with redirect_stdout(output):
+                release_readiness.emit_error("bad%value\nnext")
+
+        self.assertEqual(
+            output.getvalue().splitlines(),
+            ["error: bad%value", "next", "::error::bad%25value%0Anext"],
+        )
 
 
 if __name__ == "__main__":

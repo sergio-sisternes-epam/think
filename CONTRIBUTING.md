@@ -37,9 +37,7 @@ file hashes.
    ```bash
    python3 -m unittest discover -s scripts -p 'test_*.py'
    python3 scripts/release_readiness.py --commit "$(git rev-parse HEAD)"
-   git ls-files -z | while IFS= read -r -d '' file; do
-     apm audit --file "$file" --no-policy
-   done
+   python3 scripts/audit_source.py
    ```
 
 4. Install the checked-out package into a disposable consumer, run a frozen

@@ -14,7 +14,7 @@ Fixes #
 ## Validation
 
 - [ ] `python3 -m unittest discover -s scripts -p 'test_*.py'` succeeds
-- [ ] Release metadata matches `apm.yml`
-- [ ] APM source audit succeeds
-- [ ] Disposable consumer installs and frozen replay succeed
+- [ ] [Release metadata](../CONTRIBUTING.md#development-workflow) matches `apm.yml`
+- [ ] [APM source audit](../CONTRIBUTING.md#development-workflow) succeeds
+- [ ] [Disposable consumer installs and frozen replay](../CONTRIBUTING.md#development-workflow) succeed
 - [ ] CI checks pass

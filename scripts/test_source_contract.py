@@ -70,6 +70,7 @@ class SourceContractTests(unittest.TestCase):
         )
         self.assertNotIn("APM_READ_TOKEN", ci + release)
         self.assertNotIn("secrets: inherit", ci + release)
+        self.assertIn("run: python3 scripts/audit_source.py", ci)
 
     def test_consumer_validation_is_repository_owned(self) -> None:
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
@@ -86,6 +87,23 @@ class SourceContractTests(unittest.TestCase):
             self.assertTrue(external_uses, relative)
             for action, revision in external_uses:
                 self.assertRegex(revision, r"^[0-9a-f]{40}$", action)
+
+    def test_apm_cli_version_surfaces_match(self) -> None:
+        ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+        issue_template = (
+            ROOT / ".github/ISSUE_TEMPLATE/bug_report.md"
+        ).read_text(encoding="utf-8")
+
+        versions = {
+            re.search(r'(?m)^\s*APM_VERSION:\s*"([^"]+)"$', ci).group(1),
+            re.search(r"(?m)^\| APM CLI \| ([^ ]+)", contributing).group(1),
+            re.search(
+                r"(?m)^- \*\*APM CLI version:\*\* e\.g\. ([^\s]+)",
+                issue_template,
+            ).group(1),
+        }
+        self.assertEqual(versions, {"0.29.0"})
 
 
 if __name__ == "__main__":

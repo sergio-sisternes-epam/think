@@ -12,6 +12,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_SKILLS = ("think-challenge", "think-grill", "think-ramble")
+SHARED_TARGETS = {
+    "agent-skills",
+    "codex",
+    "copilot",
+    "cursor",
+    "gemini",
+    "opencode",
+    "windsurf",
+}
 
 
 def run(*args: str, cwd: Path) -> None:
@@ -24,8 +33,21 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def validate_deployment(consumer: Path) -> None:
-    skills_root = consumer / ".agents" / "skills"
+def expected_skill_roots(consumer: Path, target: str) -> tuple[Path, ...]:
+    targets = set(target.split(","))
+    roots = set()
+    if targets & SHARED_TARGETS:
+        roots.add(consumer / ".agents" / "skills")
+    if "claude" in targets:
+        roots.add(consumer / ".claude" / "skills")
+    if "grok-build" in targets:
+        roots.add(consumer / ".grok" / "skills")
+    if "kiro" in targets:
+        roots.add(consumer / ".kiro" / "skills")
+    return tuple(sorted(roots))
+
+
+def validate_skill_root(skills_root: Path) -> None:
     if not skills_root.is_dir():
         raise RuntimeError(
             f"{skills_root}: expected deployed skills directory is missing"
@@ -48,6 +70,14 @@ def validate_deployment(consumer: Path) -> None:
             raise RuntimeError(f"{skill_file}: missing exact '{expected_name}'")
 
 
+def validate_deployment(consumer: Path, target: str) -> None:
+    roots = expected_skill_roots(consumer, target)
+    if not roots:
+        raise RuntimeError(f"no supported skill deployment root for target: {target}")
+    for skills_root in roots:
+        validate_skill_root(skills_root)
+
+
 def validate_consumer(source: Path, target: str) -> str:
     with tempfile.TemporaryDirectory(prefix="think-consumer-") as directory:
         consumer = Path(directory)
@@ -61,7 +91,7 @@ def validate_consumer(source: Path, target: str) -> str:
             "--no-policy",
             cwd=consumer,
         )
-        validate_deployment(consumer)
+        validate_deployment(consumer, target)
 
         lock = consumer / "apm.lock.yaml"
         before = digest(lock)
