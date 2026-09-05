@@ -90,6 +90,10 @@ class SourceContractTests(unittest.TestCase):
             ci,
         )
         self.assertIn("workflow_dispatch:\n    inputs:\n      candidate_revision:", ci)
+        self.assertIn(
+            '[ -n "$PACKAGE_SOURCE" ] && [ -z "$CANDIDATE_REVISION" ]',
+            ci,
+        )
         self.assertIn("python3 scripts/release_notes.py", release)
         self.assertIn('--notes "$release_notes"', release)
 

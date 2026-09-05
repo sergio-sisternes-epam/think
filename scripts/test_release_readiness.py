@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stderr
@@ -15,6 +16,45 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ReleaseReadinessTests(unittest.TestCase):
+    def git(self, root: Path, *args: str) -> str:
+        return subprocess.run(
+            ["git", *args],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        ).stdout.strip()
+
+    def create_release_checkout(
+        self,
+        root: Path,
+    ) -> tuple[Path, Path, str]:
+        remote = root / "remote.git"
+        source = root / "source"
+        checkout = root / "checkout"
+        self.git(root, "init", "--bare", str(remote))
+        self.git(root, "init", "-b", "main", str(source))
+        self.git(source, "config", "user.name", "Readiness Test")
+        self.git(source, "config", "user.email", "readiness@example.com")
+        for relative in (
+            "apm.yml",
+            "README.md",
+            "CHANGELOG.md",
+            ".github/ISSUE_TEMPLATE/bug_report.md",
+        ):
+            destination = source / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / relative, destination)
+        self.git(source, "add", ".")
+        self.git(source, "commit", "-m", "Release candidate")
+        commit = self.git(source, "rev-parse", "HEAD")
+        self.git(source, "remote", "add", "origin", str(remote))
+        self.git(source, "push", "origin", "main")
+        self.git(root, "clone", "--no-tags", str(remote), str(checkout))
+        self.git(checkout, "checkout", "--detach", commit)
+        return source, checkout, commit
+
     def read_outputs(self, path: Path) -> dict[str, str]:
         content = path.read_text(encoding="utf-8").splitlines()
         values = {}
@@ -199,6 +239,28 @@ class ReleaseReadinessTests(unittest.TestCase):
                 f"candidate commit {'2' * 40} != exact current main {'1' * 40}"
             ],
         )
+
+    def test_require_current_main_uses_real_detached_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, checkout, commit = self.create_release_checkout(root)
+
+            status = release_readiness.main(
+                ["--commit", commit, "--require-current-main"],
+                checkout,
+            )
+            self.assertEqual(status, 0)
+
+            (source / "advance.txt").write_text("advance\n", encoding="utf-8")
+            self.git(source, "add", "advance.txt")
+            self.git(source, "commit", "-m", "Advance main")
+            self.git(source, "push", "origin", "main")
+
+            status = release_readiness.main(
+                ["--commit", commit, "--require-current-main"],
+                checkout,
+            )
+            self.assertEqual(status, 1)
 
 
 if __name__ == "__main__":
