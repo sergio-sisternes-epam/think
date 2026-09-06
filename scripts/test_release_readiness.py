@@ -295,6 +295,7 @@ class ReleaseReadinessTests(unittest.TestCase):
             (
                 "fetch",
                 "--no-tags",
+                "--",
                 "upstream",
                 "+refs/heads/main:refs/remotes/upstream/main",
             ),

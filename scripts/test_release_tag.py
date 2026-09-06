@@ -151,6 +151,7 @@ class ReleaseTagTests(unittest.TestCase):
             (
                 "fetch",
                 "--no-tags",
+                "--",
                 "upstream",
                 "refs/tags/v0.1.0:refs/release-tags/v0.1.0",
                 "+refs/heads/main:refs/remotes/upstream/main",

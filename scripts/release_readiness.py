@@ -167,6 +167,7 @@ def current_main_revision(
     git(
         "fetch",
         "--no-tags",
+        "--",
         remote,
         f"+refs/heads/main:{main_ref}",
         root=root,

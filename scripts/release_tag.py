@@ -61,6 +61,7 @@ def verify_remote_tag(
     git(
         "fetch",
         "--no-tags",
+        "--",
         remote,
         f"{remote_ref}:{tag_ref}",
         f"+refs/heads/main:{main_ref}",
