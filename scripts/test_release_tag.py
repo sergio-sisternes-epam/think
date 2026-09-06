@@ -118,6 +118,49 @@ class ReleaseTagTests(unittest.TestCase):
             + base64.b64encode(b"x-access-token:secret").decode("ascii"),
         )
 
+    def test_verification_uses_supplied_remote_tracking_ref(self) -> None:
+        tag_object = "1" * 40
+        commit = "2" * 40
+        with mock.patch.object(
+            release_tag,
+            "run_git",
+            side_effect=[
+                "",
+                "",
+                "",
+                "",
+                "tag",
+                tag_object,
+                commit,
+                commit,
+            ],
+        ) as run_git:
+            verified = release_tag.verify_remote_tag(
+                "v0.1.0",
+                Path("."),
+                remote="upstream",
+            )
+
+        self.assertEqual(verified.main_revision, commit)
+        self.assertEqual(
+            run_git.call_args_list[2].args,
+            ("check-ref-format", "refs/remotes/upstream/main"),
+        )
+        self.assertEqual(
+            run_git.call_args_list[3].args,
+            (
+                "fetch",
+                "--no-tags",
+                "upstream",
+                "refs/tags/v0.1.0:refs/release-tags/v0.1.0",
+                "+refs/heads/main:refs/remotes/upstream/main",
+            ),
+        )
+        self.assertEqual(
+            run_git.call_args_list[7].args,
+            ("rev-parse", "refs/remotes/upstream/main"),
+        )
+
     def test_tag_not_on_current_main_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

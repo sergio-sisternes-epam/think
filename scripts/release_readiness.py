@@ -162,15 +162,17 @@ def current_main_revision(
     remote: str = "origin",
     token: str | None = None,
 ) -> str:
+    main_ref = f"refs/remotes/{remote}/main"
+    git("check-ref-format", main_ref, root=root)
     git(
         "fetch",
         "--no-tags",
         remote,
-        "+refs/heads/main:refs/remotes/origin/main",
+        f"+refs/heads/main:{main_ref}",
         root=root,
         token=token,
     )
-    return git("rev-parse", "refs/remotes/origin/main", root=root)
+    return git("rev-parse", main_ref, root=root)
 
 
 def validate_commit(candidate: str, root: Path = ROOT) -> list[str]:

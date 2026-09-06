@@ -262,7 +262,7 @@ class ReleaseReadinessTests(unittest.TestCase):
         with mock.patch.object(
             release_readiness,
             "run_git",
-            side_effect=["", "a" * 40],
+            side_effect=["", "", "a" * 40],
         ) as run_git:
             revision = release_readiness.current_main_revision(
                 ROOT,
@@ -270,9 +270,39 @@ class ReleaseReadinessTests(unittest.TestCase):
             )
 
         self.assertEqual(revision, "a" * 40)
-        self.assertIn("AUTHORIZATION: basic", run_git.call_args_list[0].kwargs["env"][
+        self.assertIn("AUTHORIZATION: basic", run_git.call_args_list[1].kwargs["env"][
             "GIT_CONFIG_VALUE_0"
         ])
+
+    def test_current_main_uses_supplied_remote_tracking_ref(self) -> None:
+        with mock.patch.object(
+            release_readiness,
+            "run_git",
+            side_effect=["", "", "a" * 40],
+        ) as run_git:
+            revision = release_readiness.current_main_revision(
+                ROOT,
+                remote="upstream",
+            )
+
+        self.assertEqual(revision, "a" * 40)
+        self.assertEqual(
+            run_git.call_args_list[0].args,
+            ("check-ref-format", "refs/remotes/upstream/main"),
+        )
+        self.assertEqual(
+            run_git.call_args_list[1].args,
+            (
+                "fetch",
+                "--no-tags",
+                "upstream",
+                "+refs/heads/main:refs/remotes/upstream/main",
+            ),
+        )
+        self.assertEqual(
+            run_git.call_args_list[2].args,
+            ("rev-parse", "refs/remotes/upstream/main"),
+        )
 
     def test_require_current_main_uses_real_detached_checkout(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
