@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Use the selected Git remote consistently when release readiness and tag
+  validation fetch and resolve the exact current `main` revision.
+
 ## [0.1.0]
 
 Prepared for the separately approved first tag and GitHub Release. The links

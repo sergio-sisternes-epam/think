@@ -89,6 +89,46 @@ class ReleaseTagTests(unittest.TestCase):
                 "commit",
             )
 
+    def test_tag_validation_uses_selected_non_origin_remote_ref(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            remote, source, commit = self.create_remote(root)
+            self.git(source, "tag", "-a", "v0.1.0", "-m", "Think v0.1.0")
+            self.git(source, "push", "origin", "refs/tags/v0.1.0")
+            checkout = self.clone_checkout(root, remote, commit)
+            self.git(checkout, "remote", "rename", "origin", "upstream")
+            self.git(
+                checkout,
+                "update-ref",
+                "-d",
+                "refs/remotes/upstream/main",
+            )
+
+            verified = release_tag.verify_remote_tag(
+                "v0.1.0",
+                checkout,
+                remote="upstream",
+            )
+
+            self.assertEqual(verified.candidate_revision, commit)
+            self.assertEqual(verified.main_revision, commit)
+            self.assertEqual(
+                self.git(checkout, "rev-parse", "refs/remotes/upstream/main"),
+                commit,
+            )
+            result = subprocess.run(
+                [
+                    "git",
+                    "show-ref",
+                    "--verify",
+                    "--quiet",
+                    "refs/remotes/origin/main",
+                ],
+                cwd=checkout,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 1)
+
     def test_lightweight_remote_tag_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

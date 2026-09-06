@@ -90,6 +90,9 @@ or a compatibility-breaking skill contract.
    git push origin "refs/tags/v$version"
    ```
 
+   When using another configured remote, replace `origin` consistently in both
+   the fetch source and `refs/remotes/<remote>/main` destination/readback.
+
 5. The tag workflow verifies the authoritative remote tag object in an isolated
    namespace, requires it to peel to exact current `main`, reruns every gate,
    re-verifies the object immediately before publication, and creates the

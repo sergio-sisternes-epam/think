@@ -53,15 +53,18 @@ def verify_remote_tag(
 ) -> ReleaseTag:
     remote_ref = f"refs/tags/{tag}"
     tag_ref = f"refs/release-tags/{tag}"
+    main_ref = f"refs/remotes/{remote}/main"
     git("check-ref-format", remote_ref, root=root)
     git("check-ref-format", tag_ref, root=root)
+    git("check-ref-format", main_ref, root=root)
 
     git(
         "fetch",
         "--no-tags",
+        "--",
         remote,
         f"{remote_ref}:{tag_ref}",
-        "+refs/heads/main:refs/remotes/origin/main",
+        f"+refs/heads/main:{main_ref}",
         root=root,
         token=token,
     )
@@ -73,7 +76,7 @@ def verify_remote_tag(
 
     tag_object = git("rev-parse", tag_ref, root=root)
     candidate_revision = git("rev-parse", f"{tag_ref}^{{commit}}", root=root)
-    main_revision = git("rev-parse", "refs/remotes/origin/main", root=root)
+    main_revision = git("rev-parse", main_ref, root=root)
     if candidate_revision != main_revision:
         raise ReleaseTagError(
             f"{remote_ref} peels to {candidate_revision}, "
