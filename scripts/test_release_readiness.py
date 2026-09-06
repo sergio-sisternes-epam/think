@@ -262,7 +262,7 @@ class ReleaseReadinessTests(unittest.TestCase):
         with mock.patch.object(
             release_readiness,
             "run_git",
-            side_effect=["", "a" * 40],
+            side_effect=["", "", "a" * 40],
         ) as run_git:
             revision = release_readiness.current_main_revision(
                 ROOT,
@@ -270,9 +270,50 @@ class ReleaseReadinessTests(unittest.TestCase):
             )
 
         self.assertEqual(revision, "a" * 40)
-        self.assertIn("AUTHORIZATION: basic", run_git.call_args_list[0].kwargs["env"][
+        self.assertIn("AUTHORIZATION: basic", run_git.call_args_list[1].kwargs["env"][
             "GIT_CONFIG_VALUE_0"
         ])
+
+    def test_current_main_uses_selected_non_origin_remote_ref(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, checkout, _ = self.create_release_checkout(root)
+            self.git(checkout, "remote", "rename", "origin", "upstream")
+            self.git(
+                checkout,
+                "update-ref",
+                "-d",
+                "refs/remotes/upstream/main",
+            )
+
+            (source / "advance.txt").write_text("advance\n", encoding="utf-8")
+            self.git(source, "add", "advance.txt")
+            self.git(source, "commit", "-m", "Advance main")
+            self.git(source, "push", "origin", "main")
+            expected = self.git(source, "rev-parse", "HEAD")
+
+            revision = release_readiness.current_main_revision(
+                checkout,
+                remote="upstream",
+            )
+
+            self.assertEqual(revision, expected)
+            self.assertEqual(
+                self.git(checkout, "rev-parse", "refs/remotes/upstream/main"),
+                expected,
+            )
+            result = subprocess.run(
+                [
+                    "git",
+                    "show-ref",
+                    "--verify",
+                    "--quiet",
+                    "refs/remotes/origin/main",
+                ],
+                cwd=checkout,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 1)
 
     def test_require_current_main_uses_real_detached_checkout(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
