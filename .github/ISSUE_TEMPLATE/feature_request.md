@@ -1,9 +1,8 @@
 ---
 name: Feature request
-about: Suggest a new Think skill or improvement
-title: ''
-labels: enhancement
-assignees: ''
+about: Propose a change or new capability
+title: "[feat] "
+labels: ["enhancement"]
 ---
 
 ## Problem
@@ -18,6 +17,12 @@ Describe the solution you would like.
 
 Any alternative approaches you have considered.
 
+## Scope
+
+- [ ] Small documentation or maintenance change
+- [ ] User-visible package, skill, or workflow change
+- [ ] I am asking for maintainer approval before opening a pull request
+
 ## Additional context
 
-Add any other context, mockups, or examples.
+Add any other context, mockups, or examples. Do not include secrets.
