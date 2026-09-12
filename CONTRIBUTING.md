@@ -10,6 +10,20 @@ Thank you for your interest in contributing to `think`.
 | Python | 3.12 | Used by the repository-owned release checks |
 | APM CLI | 0.29.0 (see `APM_VERSION` in CI) | CI verifies the pinned release archive checksum; pin the same version locally |
 
+## Issues and pull requests
+
+Use the GitHub issue and pull request templates in `.github/`.
+
+Do not file public issues for vulnerabilities. Report them with a
+[private security advisory](https://github.com/sergio-sisternes-epam/think/security/advisories/new).
+
+Open an issue before substantive external work. Maintainers may skip that for
+small documentation or maintenance changes. Human scope approval is required
+before user-visible package, skill, or workflow changes.
+
+If you used an agent, you own the diffs. Do not submit unattended agent work
+that lists an agent as the GitHub author.
+
 ## Repository structure
 
 ```

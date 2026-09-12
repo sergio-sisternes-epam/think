@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Normalized GitHub issue and pull request templates to the family hybrid
+  format, including private security reporting and Think validation checks.
+
 ### Added
 
 - State Sergio Sisternes' 2026 copyright while retaining the complete

@@ -1,9 +1,8 @@
 ---
 name: Bug report
-about: Report a problem with the Think package
-title: ''
-labels: bug
-assignees: ''
+about: Report a problem with this package
+title: "[bug] "
+labels: ["bug"]
 ---
 
 ## Describe the bug
@@ -24,8 +23,9 @@ What you expected to happen.
 - **OS:** e.g. Ubuntu 22.04 / macOS 14
 - **APM CLI version:** e.g. 0.29.0
 - **Package version:** e.g. think v0.1.0
-- **Target / harness:** e.g. agent-skills, copilot, cursor
+- **Target harness:** e.g. agent-skills, copilot, cursor
+- **git SHA:** if reporting from an untagged checkout
 
 ## Additional context
 
-Add any other context, logs, or screenshots.
+Add any other context or sanitized logs. Do not include secrets, credentials, or private tokens.
