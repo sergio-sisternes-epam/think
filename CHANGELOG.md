@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documented public consumer install via the Atlas marketplace only.
   Tagged Git and local clone commands remain contributor internals in
   CONTRIBUTING.md.
+- Aligned `SECURITY.md` with the private security advisory used by
+  CONTRIBUTING.md and the issue templates.
 - Normalized GitHub issue and pull request templates to the family hybrid
   format, including private security reporting and Think validation checks.
 
