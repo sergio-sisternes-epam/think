@@ -4,7 +4,8 @@
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
-Instead, contact a repository [CODEOWNER](.github/CODEOWNERS) directly via private message on GitHub.
+Report them with a
+[private security advisory](https://github.com/sergio-sisternes-epam/think/security/advisories/new).
 
 Please include as much of the following information as possible:
 

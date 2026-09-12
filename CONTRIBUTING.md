@@ -10,6 +10,30 @@ Thank you for your interest in contributing to `think`.
 | Python | 3.12 | Used by the repository-owned release checks |
 | APM CLI | 0.29.0 (see `APM_VERSION` in CI) | CI verifies the pinned release archive checksum; pin the same version locally |
 
+## Consumer install internals
+
+Public consumers install only from the Atlas marketplace (`think@atlas`).
+`--name atlas` is required so the package resolves as `think@atlas`.
+
+Tagged Git and local checkout installs are contributor and release-validation
+internals. Think is validated with APM CLI 0.29.0 against the shared
+`agent-skills` target and the stable Claude, Codex, Copilot, Cursor, Gemini,
+Grok Build, Kiro, OpenCode, and Windsurf targets:
+
+```bash
+apm install sergio-sisternes-epam/think#v0.1.0 --target agent-skills
+```
+
+```bash
+apm install sergio-sisternes-epam/think#v0.1.0 --target claude,codex,copilot,cursor,gemini,grok-build,kiro,opencode,windsurf
+```
+
+From a local clone:
+
+```bash
+apm install /path/to/think --target agent-skills
+```
+
 ## Issues and pull requests
 
 Use the GitHub issue and pull request templates in `.github/`.
@@ -85,7 +109,7 @@ Think follows semantic versioning. While the package remains below `1.0.0`, use
 a patch increment for compatible fixes and a minor increment for new capability
 or a compatibility-breaking skill contract.
 
-1. Update `apm.yml`, README install commands, the bug-report version
+1. Update `apm.yml`, CONTRIBUTING install commands, the bug-report version
    example, and `CHANGELOG.md`.
 2. Merge the reviewed change through the protected `main` branch.
 3. Run **Think CI** manually against the exact `main` commit intended for
