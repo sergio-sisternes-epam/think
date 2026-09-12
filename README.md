@@ -106,4 +106,6 @@ To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 
 ## Licence
 
-Apache-2.0. See [LICENSE](./LICENSE).
+Copyright 2026 Sergio Sisternes.
+
+Licensed under Apache-2.0. See [LICENSE](./LICENSE).
