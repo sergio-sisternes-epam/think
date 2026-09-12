@@ -142,15 +142,15 @@ class SourceContractTests(unittest.TestCase):
         self.assertLess(setup.index("tar -xzf"), setup.index('"$binary_dir/apm" --version'))
         self.assertNotIn("install -m", setup)
 
-    def test_runtime_target_profiles_match_workflow_and_readme(self) -> None:
+    def test_runtime_target_profiles_match_workflow_and_contributing(self) -> None:
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
 
         for name, targets in validate_consumer.TARGET_PROFILES.items():
             target_list = ",".join(targets)
             self.assertIn(f"- name: {name}\n", ci)
             self.assertIn(f"target: {target_list}\n", ci)
-            self.assertIn(f"--target {target_list}", readme)
+            self.assertIn(f"--target {target_list}", contributing)
 
     def test_apm_cli_version_surfaces_match(self) -> None:
         ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
@@ -158,7 +158,6 @@ class SourceContractTests(unittest.TestCase):
         issue_template = (
             ROOT / ".github/ISSUE_TEMPLATE/bug_report.md"
         ).read_text(encoding="utf-8")
-        readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
         versions = {
             re.search(r'(?m)^\s*APM_VERSION:\s*"([^"]+)"$', ci).group(1),
@@ -167,7 +166,7 @@ class SourceContractTests(unittest.TestCase):
                 r"(?m)^- \*\*APM CLI version:\*\* e\.g\. ([^\s]+)",
                 issue_template,
             ).group(1),
-            re.search(r"Think is validated with APM CLI ([^ ]+)", readme).group(1),
+            re.search(r"Think is validated with APM CLI ([^ ]+)", contributing).group(1),
         }
         self.assertEqual(versions, {"0.29.0"})
 

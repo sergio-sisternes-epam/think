@@ -40,6 +40,7 @@ class ReleaseReadinessTests(unittest.TestCase):
         for relative in (
             "apm.yml",
             "README.md",
+            "CONTRIBUTING.md",
             "CHANGELOG.md",
             ".github/ISSUE_TEMPLATE/bug_report.md",
         ):
@@ -79,6 +80,7 @@ class ReleaseReadinessTests(unittest.TestCase):
             for relative in (
                 "apm.yml",
                 "README.md",
+                "CONTRIBUTING.md",
                 "CHANGELOG.md",
                 ".github/ISSUE_TEMPLATE/bug_report.md",
             ):
@@ -86,9 +88,9 @@ class ReleaseReadinessTests(unittest.TestCase):
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(ROOT / relative, destination)
 
-            readme = root / "README.md"
-            readme.write_text(
-                readme.read_text(encoding="utf-8").replace(
+            contributing = root / "CONTRIBUTING.md"
+            contributing.write_text(
+                contributing.read_text(encoding="utf-8").replace(
                     "think#v0.1.0", "think#v0.2.0"
                 ),
                 encoding="utf-8",
@@ -107,6 +109,7 @@ class ReleaseReadinessTests(unittest.TestCase):
             for relative in (
                 "apm.yml",
                 "README.md",
+                "CONTRIBUTING.md",
                 ".github/ISSUE_TEMPLATE/bug_report.md",
             ):
                 destination = root / relative
@@ -125,6 +128,7 @@ class ReleaseReadinessTests(unittest.TestCase):
             for relative in (
                 "apm.yml",
                 "README.md",
+                "CONTRIBUTING.md",
                 "CHANGELOG.md",
                 ".github/ISSUE_TEMPLATE/bug_report.md",
             ):

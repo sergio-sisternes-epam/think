@@ -36,13 +36,13 @@ SURFACES = (
     VersionSurface("manifest", "apm.yml", rf"^version:\s*({SEMVER})\s*$"),
     VersionSurface(
         "install command",
-        "README.md",
+        "CONTRIBUTING.md",
         rf"^apm install sergio-sisternes-epam/think#v({SEMVER})"
         rf"\s+--target\s+agent-skills\s*$",
     ),
     VersionSurface(
         "stable-runtime install command",
-        "README.md",
+        "CONTRIBUTING.md",
         rf"^apm install sergio-sisternes-epam/think#v({SEMVER})"
         rf"\s+--target\s+claude,codex,copilot,cursor,gemini,grok-build,"
         rf"kiro,opencode,windsurf\s*$",
