@@ -3,7 +3,7 @@
 > One install gives nine agent harnesses three ways to think: capture ideas,
 > interrogate assumptions, and challenge claims with sources.
 
-Install this repo as a single package. Skills live under `.apm/skills/`. There is no marketplace index and no Atlas store.
+Install this repo as a single package. Skills live under `.apm/skills/`.
 
 ## Skills
 
@@ -18,17 +18,16 @@ Conversation-only use works when no durable store is present. If Atlas (or anoth
 ## Install
 
 Install [APM](https://github.com/microsoft/apm) 0.29.0 or later, then install
-Think.
+Think from the public Atlas marketplace:
 
-The repository is private. Remote consumers need an
-[APM-supported Git credential](https://microsoft.github.io/apm/getting-started/authentication/)
-authorised to read its contents; request repository access from the
-[owner](https://github.com/sergio-sisternes-epam) and verify the active account
-with `gh auth status` before installing.
+```bash
+apm marketplace add sergio-sisternes-epam/atlas-marketplace --name atlas
+apm install think@atlas
+```
 
-The immutable `v0.1.0` install becomes available when the separately approved
-annotated tag is published. Its GitHub Release then records the curated and
-generated release notes.
+Or install the immutable `v0.1.0` tag directly. That GitHub Release records the
+curated and generated release notes once the separately approved annotated tag
+is published.
 
 ```bash
 apm install sergio-sisternes-epam/think#v0.1.0 --target agent-skills

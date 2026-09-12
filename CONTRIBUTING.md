@@ -85,7 +85,7 @@ Think follows semantic versioning. While the package remains below `1.0.0`, use
 a patch increment for compatible fixes and a minor increment for new capability
 or a compatibility-breaking skill contract.
 
-1. Update `apm.yml`, both README install commands, the bug-report version
+1. Update `apm.yml`, README install commands, the bug-report version
    example, and `CHANGELOG.md`.
 2. Merge the reviewed change through the protected `main` branch.
 3. Run **Think CI** manually against the exact `main` commit intended for
@@ -119,10 +119,8 @@ transient provider, network, or permission problem, rerun the failed workflow
 for the unchanged tag.
 
 The workflow uses only the repository `GITHUB_TOKEN`: read-only during
-validation and `contents: write` only in the Release creation job. That
-repository-scoped token can read private Think content during same-repository
-tag validation. No custom secret is required because Think has no
-cross-repository private package dependency.
+validation and `contents: write` only in the Release creation job. No custom
+secret is required because Think has no cross-repository package dependency.
 Reusable CI remains read-only and cannot elevate permissions beyond its
 caller's token context.
 GitHub grants permissions per job, so the final read-only tag reverification
