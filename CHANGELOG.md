@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Restructured the root README to the family outline: purpose, why, install,
-  use, modules, related, contributing, and license.
+  use, modules, related, contributing, and licence.
 - Documented public consumer install via the Atlas marketplace only.
   Tagged Git and local clone commands remain contributor internals in
   CONTRIBUTING.md.
