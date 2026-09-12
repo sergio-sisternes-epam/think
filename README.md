@@ -1,42 +1,40 @@
 # think
 
-> One install gives nine agent harnesses three ways to think: capture ideas,
-> interrogate assumptions, and challenge claims with sources.
+One install gives nine agent harnesses three ways to think: capture ideas,
+interrogate assumptions, and challenge claims with sources.
 
-Install this repo as a single package. Skills live under `.apm/skills/`.
+## Why / what this is not
 
-## Skills
+Think is a harness-agnostic APM package of thinking primitives: capture,
+Socratic questioning, and search-grounded counters. Conversation-only use
+works when no durable store is present.
 
-| Skill | When to use |
-|-------|-------------|
-| `think-ramble` | Dump free-form thoughts so they can be captured. |
-| `think-grill` | Be questioned to refine ideas and surface assumptions. |
-| `think-challenge` | Stress-test an idea with search-grounded counter-arguments. |
-
-Conversation-only use works when no durable store is present. If Atlas (or another store) is available, skills may optionally query or remember through it.
+It is not a marketplace, not an Atlas store, and not a harness-specific
+instruction pack. Extra depth lives in each skill's `SKILL.md`,
+[CONTRIBUTING.md](./CONTRIBUTING.md), and [SUPPORT.md](./SUPPORT.md).
 
 ## Install
-
-Install [APM](https://github.com/microsoft/apm) 0.29.0 or later, then install
-Think from the public Atlas marketplace:
 
 ```bash
 apm marketplace add sergio-sisternes-epam/atlas-marketplace --name atlas
 apm install think@atlas
 ```
 
-Or install the immutable `v0.1.0` tag directly. That GitHub Release records the
-curated and generated release notes once the separately approved annotated tag
-is published.
+Install [APM](https://github.com/microsoft/apm) 0.29.0 or later first. Think is validated with APM CLI 0.29.0 against the shared `agent-skills` target and the stable Claude, Codex, Copilot, Cursor, Gemini, Grok Build, Kiro, OpenCode, and Windsurf targets.
+
+Optional: install the immutable `v0.1.0` tag. The shared target covers Agent
+Skills, Codex, Copilot, Cursor, Gemini, OpenCode, and Windsurf:
 
 ```bash
 apm install sergio-sisternes-epam/think#v0.1.0 --target agent-skills
 ```
 
-This shared target covers Agent Skills, Codex, Copilot, Cursor, Gemini,
-OpenCode, and Windsurf. Claude, Grok Build, and Kiro use native roots; use the
-full target command in [Compatibility](#compatibility) when installing for
-those runtimes.
+Claude, Grok Build, and Kiro use native roots; use the full target set for
+those runtimes:
+
+```bash
+apm install sergio-sisternes-epam/think#v0.1.0 --target claude,codex,copilot,cursor,gemini,grok-build,kiro,opencode,windsurf
+```
 
 Or from a local clone:
 
@@ -44,66 +42,40 @@ Or from a local clone:
 apm install /path/to/think --target agent-skills
 ```
 
-Try one of these prompts after installation:
+## Use
 
 - `Ramble with me about a new product idea.`
 - `Grill me on the assumptions behind this plan.`
 - `Challenge this claim with evidence: ...`
 
-## Compatibility
+## Modules
 
-Think is validated with APM CLI 0.29.0 against the shared `agent-skills` target
-and the stable Claude, Codex, Copilot, Cursor, Gemini, Grok Build, Kiro,
-OpenCode, and Windsurf targets. A consumer install creates and owns its
-`apm.lock.yaml`; this dependency-free source package does not commit one.
+| Module | What it does |
+|--------|----------------|
+| `think-ramble` | Dump free-form thoughts so they can be captured. |
+| `think-grill` | Be questioned to refine ideas and surface assumptions. |
+| `think-challenge` | Stress-test an idea with search-grounded counter-arguments. |
 
-To exercise every stable runtime explicitly:
+## Related
 
-```bash
-apm install sergio-sisternes-epam/think#v0.1.0 --target claude,codex,copilot,cursor,gemini,grok-build,kiro,opencode,windsurf
-```
+Think is listed on the [Atlas marketplace](https://github.com/sergio-sisternes-epam/atlas-marketplace).
+This package has no Atlas store. If [atlas](https://github.com/sergio-sisternes-epam/atlas)
+is available, skills may optionally query or remember through it.
 
-APM 0.29 deploys Codex, Copilot, Cursor, Gemini, OpenCode, Windsurf, and the
-generic `agent-skills` target through `.agents/skills/<skill>/SKILL.md`.
-Claude, Grok Build, and Kiro use their native `.claude/skills/`,
-`.grok/skills/`, and `.kiro/skills/` roots respectively.
-
-## Layout
-
-```
-apm.yml
-.apm/skills/
-  think-ramble/SKILL.md
-  think-grill/SKILL.md
-  think-challenge/SKILL.md
-```
-
-The package is distributed directly from immutable Git tags. `apm pack` builds
-dependency bundles and is not a release artefact for this dependency-free
-source-package layout.
-
-## Releases
-
-Curated release notes are maintained in [CHANGELOG.md](./CHANGELOG.md). GitHub
-Release bodies start with that curated version section and append GitHub's
-generated pull-request notes. A release tag must be a newly created annotated
-`vX.Y.Z` tag on the exact current `main` commit. The tag workflow reruns source
-and consumer validation, then re-verifies the remote tag object immediately
-before creating the GitHub Release. Tags are never moved or reused.
+Other marketplace packages include [okf](https://github.com/sergio-sisternes-epam/okf),
+[discuss](https://github.com/sergio-sisternes-epam/discuss),
+[atlas-cartograph](https://github.com/sergio-sisternes-epam/atlas-cartograph),
+and [autogenesis](https://github.com/sergio-sisternes-epam/autogenesis).
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md).
+See [CONTRIBUTING.md](./CONTRIBUTING.md). Maintainers are listed in
+[AUTHORS](./AUTHORS). For bugs and questions, see [SUPPORT.md](./SUPPORT.md).
 
-## Support
+Do not file public issues for vulnerabilities. Report them with a
+[private security advisory](https://github.com/sergio-sisternes-epam/think/security/advisories/new).
 
-See [SUPPORT.md](./SUPPORT.md).
-
-## Security
-
-To report a vulnerability, see [SECURITY.md](./SECURITY.md).
-
-## Licence
+## License
 
 Copyright 2026 Sergio Sisternes.
 

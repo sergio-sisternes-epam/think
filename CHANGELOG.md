@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Restructured the root README to the family outline: purpose, why, install,
+  use, modules, related, contributing, and license.
 - Documented public consumer install via the Atlas marketplace, with the
   existing tagged Git and local clone commands as alternatives.
 - Normalized GitHub issue and pull request templates to the family hybrid
