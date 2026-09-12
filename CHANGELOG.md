@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- State Sergio Sisternes' 2026 copyright while retaining the complete
+  Apache-2.0 licence.
+
 ### Fixed
 
 - Use the selected Git remote consistently when release readiness and tag
