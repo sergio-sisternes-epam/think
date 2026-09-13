@@ -1,9 +1,8 @@
 name: think
 version: 0.1.0
 description: >
-  think-ramble (free-form capture), think-grill (Socratic questioning), and
-  think-challenge (search-grounded counters) are harness-agnostic thinking
-  primitives. Conversation-only when no durable store is present.
+  One install gives nine agent harnesses three ways to think: capture ideas,
+  interrogate assumptions, and challenge claims with sources.
 author: Sergio Sisternes
 license: Apache-2.0
 homepage: https://github.com/sergio-sisternes-epam/think

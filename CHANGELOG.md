@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Aligned the `apm.yml` package description with the README purpose sentence.
 - Restructured the root README to the family outline: purpose, why, install,
   use, modules, related, contributing, and licence.
 - Documented public consumer install via the Atlas marketplace only.
