@@ -1,15 +1,18 @@
-# think
+# Think
 
-One install gives nine agent harnesses three ways to think: capture ideas,
-interrogate assumptions, and challenge claims with sources.
+One install provides three harness-agnostic thinking skills: capture ideas, interrogate assumptions, and challenge claims with evidence.
 
 ## Why / what this is not
 
-Think is a harness-agnostic APM package of thinking primitives: capture,
-Socratic questioning, and search-grounded counters. Conversation-only use
-works when no durable store is present.
+Think supports and accelerates human thought; it does not replace human judgment. It works from the conversation alone, and uses an available Atlas store when durable context or capture is useful.
 
-It is not a replacement for human thinking and judgement, but a tool to support and accelerate it.
+## Modules
+
+| Module | What you get |
+| --- | --- |
+| [`think-ramble`](.apm/skills/think-ramble/SKILL.md) | Capture free-form thoughts and, when a store is available, consolidate them. |
+| [`think-grill`](.apm/skills/think-grill/SKILL.md) | Ask focused questions to clarify ideas and surface assumptions. |
+| [`think-challenge`](.apm/skills/think-challenge/SKILL.md) | Search for credible counters and evidence to stress-test a claim. |
 
 ## Install
 
@@ -18,36 +21,25 @@ apm marketplace add sergio-sisternes-epam/atlas-marketplace --name atlas
 apm install think@atlas
 ```
 
-`--name atlas` is required so the package resolves as `think@atlas`.
-
 ## Use
 
 - `Ramble with me about a new product idea.`
 - `Grill me on the assumptions behind this plan.`
 - `Challenge this claim with evidence: ...`
 
-## Modules
+## Prerequisites
 
-| Module | What it does |
-| --- | --- |
-| `think-ramble` | Dump free-form thoughts so they can be captured. |
-| `think-grill` | Be questioned to refine ideas and surface assumptions. |
-| `think-challenge` | Stress-test an idea with search-grounded counter-arguments. |
+An Atlas store is optional. Conversation-only use is supported; when a store is available, the skills use Atlas for durable context or capture.
 
 ## Related
 
-Think is listed on the [Atlas marketplace](https://github.com/sergio-sisternes-epam/atlas-marketplace).
+- [Atlas marketplace](https://github.com/sergio-sisternes-epam/atlas-marketplace) — package catalog.
+- [`atlas`](https://github.com/sergio-sisternes-epam/atlas) — optional durable knowledge store.
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md). Maintainers are listed in
-[AUTHORS](./AUTHORS). For bugs and questions, see [SUPPORT.md](./SUPPORT.md).
-
-Do not file public issues for vulnerabilities. Report them with a
-[private security advisory](https://github.com/sergio-sisternes-epam/think/security/advisories/new).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). Maintainers are listed in [`AUTHORS`](AUTHORS). For bugs and questions, see [`SUPPORT.md`](SUPPORT.md). Report vulnerabilities through a [private GitHub security advisory](https://github.com/sergio-sisternes-epam/think/security/advisories/new), not a public issue.
 
 ## License
 
-Copyright 2026 Sergio Sisternes.
-
-Licensed under Apache-2.0. See [LICENSE](./LICENSE).
+Copyright 2026 Sergio Sisternes. Licensed under Apache-2.0; see [`LICENSE`](LICENSE).
